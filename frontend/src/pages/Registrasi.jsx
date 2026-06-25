@@ -1,0 +1,304 @@
+import React, { useState } from 'react'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { toast } from 'react-toastify'
+import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw } from 'lucide-react'
+import axios from 'axios'
+import { formatInputRupiah, hitungEstimasiToken } from '../utils'
+
+const imeiItem = z.object({
+  value: z.string()
+    .min(9, 'IMEI / Unique Code minimal 9 digit')
+    .regex(/^\d+$/, 'Hanya angka'),
+})
+
+const schema = z.object({
+  namaLengkap: z.string().min(3, 'Nama minimal 3 karakter'),
+  nik:         z.string().length(16, 'NIK harus 16 digit').regex(/^\d+$/, 'NIK hanya angka'),
+  noHp:        z.string().min(10, 'Nomor HP tidak valid').max(15),
+  imeiItems:   z.array(imeiItem).min(1, 'Minimal 1 IMEI').max(10),
+  nominalBeli: z.string().min(1, 'Nominal wajib diisi'),
+  struk:       z.any().refine(f => f?.length > 0, 'Foto struk wajib diunggah'),
+})
+
+// ── Success screen — registrasi baru ─────────────────────────────────────────
+function SuccessBaru({ data }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4 pt-24">
+      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+        <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Registrasi Berhasil!</h2>
+        <p className="text-gray-500 mb-6">Data kamu sedang diverifikasi oleh tim MITO (1–3 hari kerja)</p>
+        <div className="bg-gray-50 rounded-xl p-4 text-left space-y-3 mb-4">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">ID Registrasi</span>
+            <span className="font-mono font-bold text-mito-red">{data.idRegistrasi}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Nama</span>
+            <span className="font-medium">{data.namaLengkap}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">IMEI Didaftarkan</span>
+            <span className="font-bold">{data.imeiCount} produk</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Status</span>
+            <span className="badge-pending">Menunggu Verifikasi</span>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400">Simpan ID Registrasi untuk cek status di halaman Pemenang</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Success screen — pembelian ulang ─────────────────────────────────────────
+function SuccessUlang({ data }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4 pt-24">
+      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <RefreshCw className="w-8 h-8 text-blue-500" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Pembelian Tambahan Terkirim!</h2>
+        <p className="text-gray-500 mb-2">
+          NIK kamu sudah terdaftar. Pembelian ini akan diverifikasi untuk menambah token.
+        </p>
+        <div className="bg-blue-50 rounded-xl p-4 text-left space-y-3 mb-4">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">ID Registrasi</span>
+            <span className="font-mono font-bold text-blue-700">{data.idRegistrasi}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Nama</span>
+            <span className="font-medium">{data.namaLengkap}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">IMEI Baru</span>
+            <span className="font-bold">{data.imeiCount} produk</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Token Sekarang</span>
+            <span className="font-bold text-amber-600">{data.pesertaToken} token</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Status Pembelian Ini</span>
+            <span className="badge-pending">Menunggu Verifikasi</span>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400">
+          Token tambahan akan masuk setelah admin menyetujui pembelian ini
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── Main form ─────────────────────────────────────────────────────────────────
+export default function Registrasi() {
+  const [submitted, setSubmitted] = useState(null)
+  const [preview, setPreview] = useState(null)
+
+  const { register, control, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { imeiItems: [{ value: '' }] },
+  })
+
+  const { fields, append, remove } = useFieldArray({ control, name: 'imeiItems' })
+
+  const nominalValue  = watch('nominalBeli') || ''
+  const estimasiToken = hitungEstimasiToken(nominalValue)
+
+  function handleFileChange(e) {
+    const file = e.target.files[0]
+    if (file) {
+      setValue('struk', e.target.files)
+      const reader = new FileReader()
+      reader.onload = ev => setPreview(ev.target.result)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  async function onSubmit(data) {
+    const imeiList = data.imeiItems.map(i => i.value.trim())
+    const formData = new FormData()
+    formData.append('namaLengkap', data.namaLengkap)
+    formData.append('nik', data.nik)
+    formData.append('noHp', data.noHp)
+    formData.append('imeiList', JSON.stringify(imeiList))
+    formData.append('nominalBeli', data.nominalBeli.replace(/\D/g, ''))
+    formData.append('struk', data.struk[0])
+
+    try {
+      const res = await axios.post('/api/registrasi', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setSubmitted(res.data)
+      toast.success(res.data.isNewRegistration ? 'Registrasi berhasil!' : 'Pembelian tambahan terkirim!')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Terjadi kesalahan. Coba lagi.')
+    }
+  }
+
+  if (submitted?.isNewRegistration === true)  return <SuccessBaru  data={submitted.data} />
+  if (submitted?.isNewRegistration === false) return <SuccessUlang data={submitted.data} />
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 py-12 px-4 pt-24">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Form Registrasi</h1>
+          <p className="text-gray-500">Program Undian MITO Jawa Timur 2026</p>
+        </div>
+
+        {/* Token estimator */}
+        <div className="bg-gradient-to-r from-mito-red to-orange-500 rounded-2xl p-4 mb-6 text-white text-center">
+          <p className="text-sm opacity-80">Estimasi Token Kamu</p>
+          <p className="text-4xl font-black">{estimasiToken}</p>
+          <p className="text-xs opacity-70">setiap Rp500.000 = 1 token</p>
+        </div>
+
+        {/* Info pembelian ulang */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex gap-2 mb-5">
+          <RefreshCw className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-700">
+            <strong>Sudah pernah daftar?</strong> Isi form ini lagi dengan NIK yang sama untuk mendaftarkan pembelian produk baru. Token akan ditambahkan ke akun kamu yang sudah ada.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
+
+          {/* Nama */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap (sesuai KTP)</label>
+            <input {...register('namaLengkap')} className="input-field" placeholder="Masukkan nama lengkap" />
+            {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap.message}</p>}
+          </div>
+
+          {/* NIK */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor KTP (NIK)</label>
+            <input {...register('nik')} maxLength={16} className="input-field font-mono" placeholder="16 digit NIK" />
+            {errors.nik && <p className="text-red-500 text-xs mt-1">{errors.nik.message}</p>}
+          </div>
+
+          {/* No HP */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Handphone</label>
+            <input {...register('noHp')} className="input-field" placeholder="08xxxxxxxxxx" />
+            {errors.noHp && <p className="text-red-500 text-xs mt-1">{errors.noHp.message}</p>}
+          </div>
+
+          {/* Multi-IMEI */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                IMEI / Unique Code Produk MITO
+              </label>
+              <span className="text-xs text-gray-400">{fields.length}/10 produk</span>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              Cek IMEI di dus/kotak produk atau menu Pengaturan › Tentang Ponsel
+            </p>
+            <div className="space-y-2">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 items-start">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Package className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        {...register(`imeiItems.${index}.value`)}
+                        className="input-field pl-9 font-mono text-sm"
+                        placeholder={`IMEI / Unique Code produk ${index + 1}`}
+                      />
+                    </div>
+                    {errors.imeiItems?.[index]?.value && (
+                      <p className="text-red-500 text-xs mt-1">{errors.imeiItems[index].value.message}</p>
+                    )}
+                  </div>
+                  {fields.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      className="mt-2.5 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {fields.length < 10 && (
+              <button
+                type="button"
+                onClick={() => append({ value: '' })}
+                className="mt-3 flex items-center gap-1.5 text-sm text-mito-red hover:text-mito-redDark font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Tambah Produk Lain
+              </button>
+            )}
+            {errors.imeiItems && !Array.isArray(errors.imeiItems) && (
+              <p className="text-red-500 text-xs mt-1">{errors.imeiItems.message}</p>
+            )}
+          </div>
+
+          {/* Nominal */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nominal Pembelian</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">Rp</span>
+              <input
+                {...register('nominalBeli')}
+                className="input-field pl-10"
+                placeholder="500.000"
+                onChange={e => {
+                  const formatted = formatInputRupiah(e.target.value)
+                  e.target.value = formatted
+                  setValue('nominalBeli', formatted)
+                }}
+              />
+            </div>
+            {errors.nominalBeli && <p className="text-red-500 text-xs mt-1">{errors.nominalBeli.message}</p>}
+          </div>
+
+          {/* Upload Struk */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Foto Struk Pembelian</label>
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-6 cursor-pointer hover:border-mito-red transition-colors">
+              {preview ? (
+                <img src={preview} alt="Preview struk" className="max-h-40 rounded-lg object-contain" />
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-500">Klik untuk upload foto struk</span>
+                  <span className="text-xs text-gray-400 mt-1">JPG, PNG, WebP (max 5MB)</span>
+                </>
+              )}
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            </label>
+            {errors.struk && <p className="text-red-500 text-xs mt-1">{errors.struk.message}</p>}
+          </div>
+
+          {/* Info */}
+          <div className="bg-blue-50 rounded-xl p-3 flex gap-2">
+            <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700">
+              Data akan diverifikasi tim MITO dalam 1–3 hari kerja. Token diberikan setelah verifikasi disetujui.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="btn-primary w-full py-4 text-base"
+          >
+            {isSubmitting && <Loader2 className="w-5 h-5 animate-spin" />}
+            {isSubmitting ? 'Mengirim...' : 'Daftar / Tambah Pembelian'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}

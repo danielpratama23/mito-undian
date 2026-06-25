@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StatusVerifikasi {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum StatusTokenPending {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Peserta {
+  id              String           @id @default(uuid())
+  idRegistrasi    String           @unique @map("id_registrasi")
+  namaLengkap     String           @map("nama_lengkap")
+  nik             String           @unique
+  noHp            String           @map("no_hp")
+  // IMEI disimpan sebagai array JSON: ["351234567890123", "351234567890124"]
+  imeiList        Json             @default("[]") @map("imei_list")
+  nominalBeli     Decimal          @map("nominal_beli") @db.Decimal(15, 2)
+  strukUrl        String           @map("struk_url")
+  tglRegistrasi   DateTime         @default(now()) @map("tgl_registrasi")
+  statusVerif     StatusVerifikasi @default(PENDING) @map("status_verif")
+  alasanReject    String?          @map("alasan_reject")
+  jumlahToken     Int              @default(0) @map("jumlah_token")
+  ikutUndian      Boolean          @default(false) @map("ikut_undian")
+  odooProductId   Int?             @map("odoo_product_id")
+  odooProductName String?          @map("odoo_product_name")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  tokenLogs     TokenLog[]
+  tokenPendings TokenPending[]
+  pemenang      Pemenang?
+
+  @@map("peserta")
+}
+
+// Pembelian tambahan dari peserta yang sudah terdaftar
+// NIK sudah ada → buat TokenPending baru, bukan Peserta baru
+model TokenPending {
+  id           String             @id @default(uuid())
+  pesertaId    String             @map("peserta_id")
+  // IMEI baru yang didaftarkan pada pembelian ini
+  imeiList     Json               @default("[]") @map("imei_list")
+  nominalBeli  Decimal            @map("nominal_beli") @db.Decimal(15, 2)
+  strukUrl     String             @map("struk_url")
+  status       StatusTokenPending @default(PENDING)
+  alasanReject String?            @map("alasan_reject")
+  tokenDiberikan Int              @default(0) @map("token_diberikan")
+  geminiRaw    Json?              @map("gemini_raw")
+  tglSubmit    DateTime           @default(now()) @map("tgl_submit")
+  tglVerif     DateTime?          @map("tgl_verif")
+
+  peserta Peserta @relation(fields: [pesertaId], references: [id])
+
+  @@map("token_pending")
+}
+
+model TokenLog {
+  id              String   @id @default(uuid())
+  pesertaId       String   @map("peserta_id")
+  jumlah          Int
+  sumber          String   @default("registrasi") // "registrasi" | "pembelian_ulang"
+  tokenPendingId  String?  @map("token_pending_id")
+  geminiRaw       Json?    @map("gemini_raw")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  peserta Peserta @relation(fields: [pesertaId], references: [id])
+
+  @@map("token_log")
+}
+
+model AdminUser {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      String   @default("verifikator")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("admin_users")
+}
+
+model Pemenang {
+  id         String   @id @default(uuid())
+  pesertaId  String   @unique @map("peserta_id")
+  hadiah     String
+  tglUndian  DateTime @map("tgl_undian")
+  noUndian   String   @map("no_undian")
+  diumumkan  Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  peserta Peserta @relation(fields: [pesertaId], references: [id])
+
+  @@map("pemenang")
+}
