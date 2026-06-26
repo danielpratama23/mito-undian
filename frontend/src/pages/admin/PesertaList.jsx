@@ -95,7 +95,7 @@ export default function PesertaList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-                {['ID Registrasi', 'Nama', 'IMEI', 'Nominal', 'Status', 'Token', 'Daftar', ''].map(h => (
+                {['ID Registrasi', 'Nama', 'Total', 'Status', 'Total Token', 'Registrasi', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {h}
                   </th>
@@ -123,7 +123,6 @@ export default function PesertaList() {
                     <div className="font-medium text-gray-900 truncate max-w-[150px]">{p.namaLengkap}</div>
                     <div className="text-xs text-gray-400 truncate max-w-[150px]">{p.odooProductName || '—'}</div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">{p.imei}</td>
                   <td className="px-4 py-3 text-gray-700">{formatRupiah(p.nominalBeli)}</td>
                   <td className="px-4 py-3"><StatusBadge status={p.statusVerif} /></td>
                   <td className="px-4 py-3">

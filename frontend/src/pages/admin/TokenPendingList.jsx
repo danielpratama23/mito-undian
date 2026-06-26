@@ -34,7 +34,7 @@ function DetailModal({ item, onClose, onDone }) {
         toast.success(res.message)
         if (res.data?.isSuspicious) toast.warning(`⚠️ ${res.data?.catatan}`, { autoClose: 8000 })
       } else {
-        toast.info('Pembelian ulang ditolak')
+        toast.info('Token ditolak')
       }
       queryClient.invalidateQueries({ queryKey: ['admin-token-pending'] })
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] })
@@ -63,7 +63,7 @@ function DetailModal({ item, onClose, onDone }) {
           <div>
             <div className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4 text-white" />
-              <span className="text-white font-bold">Pembelian Ulang</span>
+              <span className="text-white font-bold">Token Pending</span>
             </div>
             <p className="text-red-100 text-sm mt-0.5">{item.peserta?.namaLengkap}</p>
             <p className="text-red-200 text-xs font-mono">{item.peserta?.idRegistrasi}</p>
@@ -232,7 +232,7 @@ export default function TokenPendingList() {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <RefreshCw className="w-5 h-5 text-mito-red" />
-          <h1 className="text-2xl font-black text-gray-900">Pembelian Ulang</h1>
+          <h1 className="text-2xl font-black text-gray-900">Token Pending</h1>
         </div>
         <p className="text-sm text-gray-500">
           Peserta yang sudah terdaftar dan membeli produk tambahan — perlu diverifikasi untuk menambah token
@@ -276,7 +276,7 @@ export default function TokenPendingList() {
         ) : items.length === 0 ? (
           <div className="text-center py-16">
             <Filter className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-            <p className="text-gray-400 text-sm">Tidak ada data pembelian ulang</p>
+            <p className="text-gray-400 text-sm">Tidak ada data Token Pending</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">

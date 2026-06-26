@@ -10,6 +10,8 @@ const { submitRegistrasi, cekStatus }    = require('./controllers/registrasiCont
 const {
   listPeserta, detailPeserta, verifikasiPeserta, dashboard,
   listTokenPending, detailTokenPending, verifikasiTokenPending,
+  getProfile, updateProfile, changeProfilePassword,
+  listAdminUsers, createAdminUser, updateAdminUser, changeAdminUserPassword,
 } = require('./controllers/adminController')
 const { jalankanUndian, listPemenang, toggleUmumkan } = require('./controllers/undianController')
 const { requireAuth, requireSuperAdmin } = require('./middleware/auth')
@@ -56,6 +58,27 @@ app.get('/api/pemenang', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Leaderboard publik — peserta approved diurutkan token terbanyak
+app.get('/api/peserta-publik', async (req, res, next) => {
+  try {
+    const { q } = req.query
+    const where = { statusVerif: 'APPROVED', jumlahToken: { gt: 0 } }
+    if (q) where.namaLengkap = { contains: q, mode: 'insensitive' }
+ 
+    const peserta = await prisma.peserta.findMany({
+      where,
+      orderBy: { jumlahToken: 'desc' },
+      select: {
+        id: true,
+        idRegistrasi: true,
+        namaLengkap: true,
+        jumlahToken: true,
+      },
+    })
+    res.json({ success: true, data: peserta })
+  } catch (err) { next(err) }
+})
+
 // ── Admin auth ─────────────────────────────────────────────────────────────────
 app.post('/api/admin/login', async (req, res, next) => {
   try {
@@ -66,7 +89,7 @@ app.post('/api/admin/login', async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Username atau password salah' })
     }
     const token = jwt.sign({ id: admin.id, username: admin.username, role: admin.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '8h' })
-    res.json({ success: true, token, role: admin.role, username: admin.username })
+    res.json({ success: true, token, role: admin.role, username: admin.username, avatarUrl: admin.avatarUrl || null })
   } catch (err) { next(err) }
 })
 
@@ -75,6 +98,15 @@ app.get('/api/admin/dashboard',                       requireAuth, dashboard)
 app.get('/api/admin/peserta',                         requireAuth, listPeserta)
 app.get('/api/admin/peserta/:id',                     requireAuth, detailPeserta)
 app.put('/api/admin/peserta/:id/verifikasi',          requireAuth, verifikasiPeserta)
+
+// ── Admin — profile + user management ───────────────────────────────────────────
+app.get('/api/admin/profile',                         requireAuth, getProfile)
+app.put('/api/admin/profile',                          requireAuth, upload.single('avatar'), updateProfile)
+app.put('/api/admin/profile/password',                requireAuth, changeProfilePassword)
+app.get('/api/admin/users',                           requireSuperAdmin, listAdminUsers)
+app.post('/api/admin/users',                          requireSuperAdmin, upload.single('avatar'), createAdminUser)
+app.put('/api/admin/users/:id',                       requireSuperAdmin, upload.single('avatar'), updateAdminUser)
+app.put('/api/admin/users/:id/password',              requireSuperAdmin, changeAdminUserPassword)
 
 // ── Admin — token pending (pembelian ulang) ────────────────────────────────────
 app.get('/api/admin/token-pending',                   requireAuth, listTokenPending)

@@ -8,6 +8,7 @@ const navItems = [
   { to: '/cara-ikut',       label: 'Cara Ikut' },
   { to: '/syarat-ketentuan',label: 'S&K' },
   { to: '/faq',             label: 'FAQ' },
+  { to: '/daftar-peserta',  label: 'Daftar Peserta' },
   { to: '/pemenang',        label: 'Pemenang' },
 ]
 

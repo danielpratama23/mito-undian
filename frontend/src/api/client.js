@@ -39,6 +39,11 @@ export const adminApiHelper = {
   // Dashboard
   dashboard:          ()       => adminApi.get('/dashboard'),
 
+  // Profile
+  getProfile:         ()       => adminApi.get('/profile'),
+  changeProfilePassword: (body) => adminApi.put('/profile/password', body),
+  updateProfile:      (formData) => adminApi.put('/profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+
   // Peserta (registrasi baru)
   listPeserta:        (params) => adminApi.get('/peserta', { params }),
   detailPeserta:      (id)     => adminApi.get(`/peserta/${id}`),
@@ -48,6 +53,12 @@ export const adminApiHelper = {
   listTokenPending:       (params) => adminApi.get('/token-pending', { params }),
   detailTokenPending:     (id)     => adminApi.get(`/token-pending/${id}`),
   verifikasiTokenPending: (id, b)  => adminApi.put(`/token-pending/${id}/verifikasi`, b),
+
+  // Admin users
+  listAdminUsers:          ()       => adminApi.get('/users'),
+  createAdminUser:         (formData) => adminApi.post('/users', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  updateAdminUser:         (id, formData) => adminApi.put(`/users/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  changeAdminUserPassword: (id, body) => adminApi.put(`/users/${id}/password`, body),
 
   // Undian & pemenang
   listPemenang:       ()       => adminApi.get('/pemenang'),

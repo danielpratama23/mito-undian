@@ -4,9 +4,148 @@
  */
 
 const { PrismaClient } = require('@prisma/client')
+const bcrypt = require('bcryptjs')
 const { hitungToken }  = require('../services/geminiService')
+const { uploadFile }   = require('../services/storageService')
 
 const prisma = new PrismaClient()
+
+async function getProfile(req, res) {
+  const admin = await prisma.adminUser.findUnique({
+    where: { id: req.admin.id },
+    select: { id: true, username: true, role: true, avatarUrl: true, createdAt: true },
+  })
+  if (!admin) return res.status(404).json({ success: false, message: 'Admin tidak ditemukan' })
+  return res.json({ success: true, data: admin })
+}
+
+async function changeProfilePassword(req, res) {
+  const { currentPassword, newPassword } = req.body
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Password lama dan baru wajib diisi' })
+  }
+
+  const admin = await prisma.adminUser.findUnique({ where: { id: req.admin.id } })
+  if (!admin || !(await bcrypt.compare(currentPassword, admin.password))) {
+    return res.status(401).json({ success: false, message: 'Password lama tidak cocok' })
+  }
+
+  await prisma.adminUser.update({
+    where: { id: req.admin.id },
+    data: { password: await bcrypt.hash(newPassword, 12) },
+  })
+
+  return res.json({ success: true, message: 'Password berhasil diperbarui' })
+}
+
+async function updateProfile(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Avatar wajib diunggah untuk memperbarui profil' })
+  }
+
+  const avatarUrl = await uploadFile(req.file, 'avatars')
+  const updated = await prisma.adminUser.update({
+    where: { id: req.admin.id },
+    data: { avatarUrl },
+    select: { id: true, username: true, role: true, avatarUrl: true, createdAt: true },
+  })
+
+  return res.json({ success: true, data: updated })
+}
+
+async function listAdminUsers(req, res) {
+  const admins = await prisma.adminUser.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, username: true, role: true, avatarUrl: true, createdAt: true },
+  })
+  return res.json({ success: true, data: admins })
+}
+
+async function createAdminUser(req, res) {
+  const { username, password, role } = req.body
+  if (!username || !password || !role) {
+    return res.status(400).json({ success: false, message: 'Username, password, dan role wajib diisi' })
+  }
+  if (!['superadmin', 'verifikator'].includes(role)) {
+    return res.status(400).json({ success: false, message: 'Role tidak valid' })
+  }
+
+  const existing = await prisma.adminUser.findUnique({ where: { username } })
+  if (existing) return res.status(409).json({ success: false, message: 'Username sudah digunakan' })
+
+  const data = {
+    username,
+    password: await bcrypt.hash(password, 12),
+    role,
+  }
+
+  if (req.file) {
+    data.avatarUrl = await uploadFile(req.file, 'avatars')
+  }
+
+  const admin = await prisma.adminUser.create({ data })
+  return res.status(201).json({ success: true, data: {
+    id: admin.id,
+    username: admin.username,
+    role: admin.role,
+    avatarUrl: admin.avatarUrl,
+    createdAt: admin.createdAt,
+  }})
+}
+
+async function updateAdminUser(req, res) {
+  const { id } = req.params
+  const { username, role } = req.body
+
+  const admin = await prisma.adminUser.findUnique({ where: { id } })
+  if (!admin) return res.status(404).json({ success: false, message: 'Admin tidak ditemukan' })
+
+  if (username) {
+    const duplicate = await prisma.adminUser.findUnique({ where: { username } })
+    if (duplicate && duplicate.id !== id) {
+      return res.status(409).json({ success: false, message: 'Username sudah digunakan' })
+    }
+  }
+
+  const data = {}
+  if (username) data.username = username
+  if (role) {
+    if (!['superadmin', 'verifikator'].includes(role)) {
+      return res.status(400).json({ success: false, message: 'Role tidak valid' })
+    }
+    data.role = role
+  }
+  if (req.file) {
+    data.avatarUrl = await uploadFile(req.file, 'avatars')
+  }
+
+  const updated = await prisma.adminUser.update({ where: { id }, data })
+  return res.json({ success: true, data: {
+    id: updated.id,
+    username: updated.username,
+    role: updated.role,
+    avatarUrl: updated.avatarUrl,
+    createdAt: updated.createdAt,
+  }})
+}
+
+async function changeAdminUserPassword(req, res) {
+  const { id } = req.params
+  const { newPassword } = req.body
+  if (!newPassword) {
+    return res.status(400).json({ success: false, message: 'Password baru wajib diisi' })
+  }
+
+  const admin = await prisma.adminUser.findUnique({ where: { id } })
+  if (!admin) return res.status(404).json({ success: false, message: 'Admin tidak ditemukan' })
+
+  await prisma.adminUser.update({
+    where: { id },
+    data: { password: await bcrypt.hash(newPassword, 12) },
+  })
+
+  return res.json({ success: true, message: 'Password user berhasil diubah' })
+}
 
 // ── GET /api/admin/peserta ────────────────────────────────────────────────────
 async function listPeserta(req, res) {
@@ -53,6 +192,18 @@ async function detailPeserta(req, res) {
     include: {
       tokenLogs: { orderBy: { createdAt: 'desc' } },
       tokenPendings: { orderBy: { tglSubmit: 'desc' } },
+      // tambah select explicit supaya strukUrl ikut
+      select: {
+        id: true,
+        imeiList: true,
+        nominalBeli: true,
+        strukUrl: true,        // ← ini yang perlu ada
+        status: true,
+        tokenDiberikan: true,
+        alasanReject: true,
+        tglSubmit: true,
+        tglVerif: true,
+      }
     },
   })
   if (!peserta) return res.status(404).json({ success: false, message: 'Peserta tidak ditemukan' })
@@ -293,4 +444,10 @@ async function dashboard(req, res) {
   })
 }
 
-module.exports = { listPeserta, detailPeserta, verifikasiPeserta, listTokenPending, detailTokenPending, verifikasiTokenPending, dashboard }
+module.exports = {
+  listPeserta, detailPeserta, verifikasiPeserta,
+  listTokenPending, detailTokenPending, verifikasiTokenPending,
+  dashboard,
+  getProfile, updateProfile, changeProfilePassword,
+  listAdminUsers, createAdminUser, updateAdminUser, changeAdminUserPassword,
+}

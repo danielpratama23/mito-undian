@@ -17,7 +17,7 @@ export default function AdminLogin() {
     try {
       const res = await adminApiHelper.login(form)
       localStorage.setItem('mito_admin_token', res.token)
-      localStorage.setItem('mito_admin_user', JSON.stringify({ username: form.username, role: res.role }))
+        localStorage.setItem('mito_admin_user', JSON.stringify({ username: form.username, role: res.role, avatarUrl: res.avatarUrl || null }))
       navigate('/admin')
     } catch (err) {
       setError(err?.message || 'Username atau password salah')

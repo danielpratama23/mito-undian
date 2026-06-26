@@ -14,6 +14,7 @@ import CaraIkut         from './pages/CaraIkut'
 import Registrasi       from './pages/Registrasi'
 import SyaratKetentuan  from './pages/SyaratKetentuan'
 import FAQ              from './pages/FAQ'
+import DaftarPeserta    from './pages/DaftarPeserta'
 import Pemenang         from './pages/Pemenang'
 
 import AdminLogin         from './pages/admin/Login'
@@ -23,6 +24,8 @@ import AdminPesertaDetail from './pages/admin/PesertaDetail'
 import TokenPendingList   from './pages/admin/TokenPendingList'
 import AdminUndian        from './pages/admin/Undian'
 import AdminPemenang      from './pages/admin/Pemenang'
+import AdminProfile       from './pages/admin/Profile'
+import AdminUsers         from './pages/admin/Users'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30000, retry: 1 } },
@@ -41,6 +44,7 @@ export default function App() {
             <Route path="/registrasi"        element={<Registrasi />} />
             <Route path="/syarat-ketentuan"  element={<SyaratKetentuan />} />
             <Route path="/faq"               element={<FAQ />} />
+            <Route path="/daftar-peserta"    element={<DaftarPeserta />} />
             <Route path="/pemenang"          element={<Pemenang />} />
           </Route>
 
@@ -53,6 +57,8 @@ export default function App() {
             <Route path="token-pending"   element={<TokenPendingList />} />
             <Route path="undian"          element={<AdminUndian />} />
             <Route path="pemenang"        element={<AdminPemenang />} />
+            <Route path="profile"         element={<AdminProfile />} />
+            <Route path="users"           element={<AdminUsers />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
