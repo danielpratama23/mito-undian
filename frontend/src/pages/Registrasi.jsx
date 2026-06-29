@@ -1,16 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'react-toastify'
-import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw } from 'lucide-react'
+import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw, Lock, CheckIcon } from 'lucide-react'
 import axios from 'axios'
 import { formatInputRupiah, hitungEstimasiToken } from '../utils'
 
 const imeiItem = z.object({
   value: z.string()
     .min(9, 'IMEI / Unique Code minimal 9 digit')
-    .regex(/^\d+$/, 'Hanya angka'),
 })
 
 const schema = z.object({
@@ -24,6 +24,24 @@ const schema = z.object({
 
 // ── Success screen — registrasi baru ─────────────────────────────────────────
 function SuccessBaru({ data }) {
+  const navigate = useNavigate()
+  const [countdown, setCountdown] = useState(5)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          navigate('/')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [navigate])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4 pt-24">
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
@@ -56,6 +74,23 @@ function SuccessBaru({ data }) {
 
 // ── Success screen — pembelian ulang ─────────────────────────────────────────
 function SuccessUlang({ data }) {
+  const navigate = useNavigate()
+  const [countdown, setCountdown] = useState(5)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          navigate('/')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [navigate])
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4 pt-24">
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
@@ -100,8 +135,11 @@ function SuccessUlang({ data }) {
 export default function Registrasi() {
   const [submitted, setSubmitted] = useState(null)
   const [preview, setPreview] = useState(null)
+  const [nikData, setNikData] = useState(null) // Data NIK yang sudah terdaftar
+  const [validatingNIK, setValidatingNIK] = useState(false)
+  const [nikError, setNikError] = useState(null)
 
-  const { register, control, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm({
+  const { register, control, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, getValues } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { imeiItems: [{ value: '' }] },
   })
@@ -109,7 +147,59 @@ export default function Registrasi() {
   const { fields, append, remove } = useFieldArray({ control, name: 'imeiItems' })
 
   const nominalValue  = watch('nominalBeli') || ''
+  const nikValue      = watch('nik') || ''
+  const namaValue     = watch('namaLengkap') || ''
+  const noHpValue     = watch('noHp') || ''
   const estimasiToken = hitungEstimasiToken(nominalValue)
+
+  // Validasi NIK saat berubah
+  useEffect(() => {
+    const validateNIK = async () => {
+      if (nikValue.length !== 16) {
+        setNikData(null)
+        setNikError(null)
+        return
+      }
+
+      setValidatingNIK(true)
+      try {
+        const res = await axios.get('/api/registrasi/validasi/nik', {
+          params: { nik: nikValue },
+        })
+        
+        if (res.data.found) {
+          const data = res.data.data
+          setNikData(data)
+          setNikError(null)
+          
+          // Auto-fill name dan phone jika NIK ditemukan
+          setValue('namaLengkap', data.namaLengkap)
+          setValue('noHp', data.noHp)
+        } else {
+          setNikData(null)
+          setNikError(null)
+        }
+      } catch (err) {
+        console.error('Error validating NIK:', err)
+        setNikData(null)
+        setNikError(null)
+      } finally {
+        setValidatingNIK(false)
+      }
+    }
+
+    const debounce = setTimeout(validateNIK, 300)
+    return () => clearTimeout(debounce)
+  }, [nikValue, setValue])
+
+  // Validasi nama saat berubah (jika NIK sudah terdaftar)
+  useEffect(() => {
+    if (nikData && namaValue && namaValue !== nikData.namaLengkap) {
+      setNikError(`Nama tidak sesuai dengan NIK yang terdaftar. Nama terdaftar: "${nikData.namaLengkap}"`)
+    } else {
+      setNikError(null)
+    }
+  }, [namaValue, nikData])
 
   function handleFileChange(e) {
     const file = e.target.files[0]
@@ -122,6 +212,12 @@ export default function Registrasi() {
   }
 
   async function onSubmit(data) {
+    // Validasi nama jika NIK sudah terdaftar
+    if (nikData && data.namaLengkap !== nikData.namaLengkap) {
+      toast.error(`Nama tidak sesuai dengan NIK yang terdaftar. Nama terdaftar: "${nikData.namaLengkap}"`)
+      return
+    }
+
     const imeiList = data.imeiItems.map(i => i.value.trim())
     const formData = new FormData()
     formData.append('namaLengkap', data.namaLengkap)
@@ -170,24 +266,58 @@ export default function Registrasi() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
 
-          {/* Nama */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap (sesuai KTP)</label>
-            <input {...register('namaLengkap')} className="input-field" placeholder="Masukkan nama lengkap" />
-            {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap.message}</p>}
-          </div>
-
           {/* NIK */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nomor KTP (NIK)</label>
-            <input {...register('nik')} maxLength={16} className="input-field font-mono" placeholder="16 digit NIK" />
+            <div className="relative">
+              <input 
+                {...register('nik')} 
+                maxLength={16} 
+                className="input-field font-mono pr-10" 
+                placeholder="16 digit NIK"
+                disabled={false}
+              />
+              {validatingNIK && (
+                <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              )}
+              {nikData && !validatingNIK && (
+                <CheckIcon className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+              )}
+            </div>
             {errors.nik && <p className="text-red-500 text-xs mt-1">{errors.nik.message}</p>}
+            {nikData && (
+              <p className="text-xs text-green-600 mt-1">✓ NIK terdaftar — Nama dan No. HP sudah terisi otomatis (readonly)</p>
+            )}
+          </div>
+
+          {/* Nama */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              Nama Lengkap (sesuai KTP)
+              {nikData && <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            </label>
+            <input 
+              {...register('namaLengkap')} 
+              className="input-field" 
+              placeholder="Masukkan nama lengkap"
+              readOnly={!!nikData}
+            />
+            {nikError && <p className="text-red-500 text-xs mt-1">⚠️ {nikError}</p>}
+            {errors.namaLengkap && <p className="text-red-500 text-xs mt-1">{errors.namaLengkap.message}</p>}
           </div>
 
           {/* No HP */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Handphone</label>
-            <input {...register('noHp')} className="input-field" placeholder="08xxxxxxxxxx" />
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              Nomor Handphone
+              {nikData && <Lock className="w-3.5 h-3.5 text-gray-400" />}
+            </label>
+            <input 
+              {...register('noHp')} 
+              className="input-field" 
+              placeholder="08xxxxxxxxxx"
+              readOnly={!!nikData}
+            />
             {errors.noHp && <p className="text-red-500 text-xs mt-1">{errors.noHp.message}</p>}
           </div>
 
@@ -291,8 +421,8 @@ export default function Registrasi() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="btn-primary w-full py-4 text-base"
+            disabled={isSubmitting || validatingNIK || !!nikError}
+            className="btn-primary w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting && <Loader2 className="w-5 h-5 animate-spin" />}
             {isSubmitting ? 'Mengirim...' : 'Daftar / Tambah Pembelian'}

@@ -35,10 +35,17 @@ function StrukThumb({ url, onOpen }) {
   )
 }
 
-// ── Satu baris log transaksi yang bisa di-expand ──────────────────────────────
 function LogItem({ icon: Icon, iconBg, label, tanggal, nominal, imeiList, token, tokenStatus, strukUrl, alasan, onLightbox }) {
   const [open, setOpen] = useState(false)
-  const iList = Array.isArray(imeiList) ? imeiList : []
+  
+  // Handle both old format (array of strings) and new format (array of objects with imei, productId, productName)
+  const iList = Array.isArray(imeiList) 
+    ? imeiList.map(item => 
+        typeof item === 'string' 
+          ? { imei: item, productId: null, productName: null }
+          : item
+      )
+    : []
 
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
@@ -77,14 +84,22 @@ function LogItem({ icon: Icon, iconBg, label, tanggal, nominal, imeiList, token,
       {/* Detail expand */}
       {open && (
         <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 space-y-3">
-          {/* IMEI list */}
+          {/* IMEI list with product info */}
           <div>
-            <p className="text-xs font-bold text-gray-400 mb-1.5">IMEI / Unique Code</p>
-            <div className="space-y-1">
-              {iList.map((imei, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400 w-4">{i + 1}.</span>
-                  <span className="font-mono text-xs text-gray-700 bg-white border border-gray-100 rounded px-2 py-0.5">{imei}</span>
+            <p className="text-xs font-bold text-gray-400 mb-1.5">IMEI / Unique Code & Produk</p>
+            <div className="space-y-2">
+              {iList.map((item, i) => (
+                <div key={i} className="flex flex-col gap-1 pb-2 border-b border-gray-200 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-4">{i + 1}.</span>
+                    <span className="font-mono text-xs text-gray-700 bg-white border border-gray-100 rounded px-2 py-0.5">{item.imei}</span>
+                  </div>
+                  {item.productName && (
+                    <div className="ml-6 flex items-start gap-2">
+                      <Package className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-xs text-blue-700">{item.productName}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -171,7 +186,7 @@ export default function PesertaDetail() {
   const imeiList = Array.isArray(peserta.imeiList) ? peserta.imeiList : []
   const approvedPendings = (peserta.tokenPendings || []).filter(p => p.status === 'APPROVED')
 
-  // Total nominal = registrasi awal + semua pembelian ulang yang APPROVED
+  // Total nominal = registrasi awal + semua Pending Token yang APPROVED
   const totalNominal = Number(peserta.nominalBeli) +
     approvedPendings.reduce((sum, p) => sum + Number(p.nominalBeli), 0)
 
@@ -231,13 +246,24 @@ export default function PesertaDetail() {
               <div><p className="text-xs text-gray-400">No. HP</p><p className="text-sm font-medium text-gray-800">{peserta.noHp}</p></div>
             </div>
 
-            {/* Produk Odoo */}
-            <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Package className="w-4 h-4 text-gray-400" />
+            {/* Produk (Odoo) — untuk backward compatibility */}
+            {(peserta.imeiList?.some(i => i.productName)) && (
+              <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Package className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-400">Produk (Total Unik)</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {peserta.imeiList
+                      ?.filter((item, index, self) => self.findIndex(i => typeof i === 'string' ? i === item : i.productName === item.productName) === index)
+                      .map(item => typeof item === 'string' ? item : item.productName)
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0"><p className="text-xs text-gray-400">Produk (Odoo)</p><p className="text-sm font-medium text-gray-800 truncate">{peserta.odooProductName || '—'}</p></div>
-            </div>
+            )}
 
             {/* Total nominal (akumulasi) */}
             <div className="flex items-start gap-3 bg-amber-50 rounded-xl p-3">
@@ -248,7 +274,7 @@ export default function PesertaDetail() {
                 <p className="text-xs text-amber-700">Total Nominal ({totalTransaksi} transaksi)</p>
                 <p className="text-sm font-bold text-amber-800">{formatRupiah(totalNominal)}</p>
                 {totalTransaksi > 1 && (
-                  <p className="text-xs text-amber-600 mt-0.5">Awal {formatRupiah(peserta.nominalBeli)} + {approvedPendings.length} pembelian ulang</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Awal {formatRupiah(peserta.nominalBeli)} + {approvedPendings.length} Pending Token</p>
                 )}
               </div>
             </div>
@@ -270,14 +296,33 @@ export default function PesertaDetail() {
                 <Package className="w-4 h-4 text-gray-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-400 mb-1.5">IMEI / Unique Code (Registrasi Awal — {imeiList.length} produk)</p>
+                <p className="text-xs text-gray-400 mb-1.5">IMEI / Unique Code & Produk (Registrasi Awal — {imeiList.length} produk)</p>
                 {imeiList.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {imeiList.map((imei, i) => (
-                      <span key={i} className="font-mono text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700">
-                        {imei}
-                      </span>
-                    ))}
+                  <div className="space-y-2">
+                    {imeiList.map((item, i) => {
+                      // Handle both old format (string) and new format (object)
+                      const imei = typeof item === 'string' ? item : item.imei
+                      const productName = typeof item === 'string' ? null : item.productName
+                      return (
+                        <div key={i} className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 font-medium">{i + 1}.</span>
+                            <span className="font-mono text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700">
+                              {imei}
+                            </span>
+                            <span className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700">
+                              {productName || <span className="italic text-gray-400">tidak ada info produk</span>}
+                            </span>
+                          </div>
+                          {productName && (
+                            <div className="ml-6 flex items-center gap-2">
+                              <Package className="w-3 h-3 text-blue-500" />
+                              <span className="text-xs text-blue-700 font-medium">{productName}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : (
                   <span className="text-sm text-gray-400 italic">—</span>
@@ -317,7 +362,7 @@ export default function PesertaDetail() {
             <LogItem
               icon={ShoppingBag}
               iconBg="bg-mito-red"
-              label={`Registrasi Awal${peserta.odooProductName ? ` — ${peserta.odooProductName}` : ''}`}
+              label="Registrasi Awal"
               tanggal={formatTanggalWaktu(peserta.tglRegistrasi)}
               nominal={peserta.nominalBeli}
               imeiList={imeiList}
@@ -328,13 +373,13 @@ export default function PesertaDetail() {
               onLightbox={setLightboxUrl}
             />
 
-            {/* Transaksi berikutnya: pembelian ulang */}
+            {/* Transaksi berikutnya: Pending Token */}
             {(peserta.tokenPendings || []).map((tp, i) => (
               <LogItem
                 key={tp.id}
                 icon={RefreshCw}
                 iconBg={tp.status === 'APPROVED' ? 'bg-green-500' : tp.status === 'REJECTED' ? 'bg-red-400' : 'bg-gray-400'}
-                label={`Pembelian Ulang #${i + 1}`}
+                label={`Pending Token #${i + 1}`}
                 tanggal={formatTanggalWaktu(tp.tglSubmit)}
                 nominal={tp.nominalBeli}
                 imeiList={tp.imeiList}

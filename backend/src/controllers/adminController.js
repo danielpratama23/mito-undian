@@ -171,7 +171,7 @@ async function listPeserta(req, res) {
       select: {
         id: true, idRegistrasi: true, namaLengkap: true, nik: true, noHp: true,
         imeiList: true, nominalBeli: true, statusVerif: true, jumlahToken: true,
-        tglRegistrasi: true, odooProductName: true,
+        tglRegistrasi: true,
         _count: { select: { tokenPendings: true } },
       },
     }),
@@ -191,19 +191,9 @@ async function detailPeserta(req, res) {
     where: { id: req.params.id },
     include: {
       tokenLogs: { orderBy: { createdAt: 'desc' } },
-      tokenPendings: { orderBy: { tglSubmit: 'desc' } },
-      // tambah select explicit supaya strukUrl ikut
-      select: {
-        id: true,
-        imeiList: true,
-        nominalBeli: true,
-        strukUrl: true,        // ← ini yang perlu ada
-        status: true,
-        tokenDiberikan: true,
-        alasanReject: true,
-        tglSubmit: true,
-        tglVerif: true,
-      }
+      tokenPendings: {
+        orderBy: { tglSubmit: 'desc' },
+      },
     },
   })
   if (!peserta) return res.status(404).json({ success: false, message: 'Peserta tidak ditemukan' })
@@ -239,7 +229,6 @@ async function verifikasiPeserta(req, res) {
       nik:         peserta.nik,
       imei:        imeiList.join(', '),
       nominalBeli: peserta.nominalBeli,
-      productName: peserta.odooProductName,
       odooHarga:   null,
     })
 
@@ -329,7 +318,7 @@ async function detailTokenPending(req, res) {
       peserta: {
         select: {
           id: true, idRegistrasi: true, namaLengkap: true, nik: true,
-          noHp: true, jumlahToken: true, odooProductName: true,
+          noHp: true, jumlahToken: true,
         },
       },
     },
@@ -373,7 +362,6 @@ async function verifikasiTokenPending(req, res) {
       nik:         item.peserta.nik,
       imei:        imeiList.join(', '),
       nominalBeli: item.nominalBeli,
-      productName: item.peserta.odooProductName,
       odooHarga:   null,
     })
 

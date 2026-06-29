@@ -6,7 +6,7 @@ const jwt      = require('jsonwebtoken')
 const bcrypt   = require('bcryptjs')
 const { PrismaClient } = require('@prisma/client')
 
-const { submitRegistrasi, cekStatus }    = require('./controllers/registrasiController')
+const { submitRegistrasi, cekStatus, validasiNIK }    = require('./controllers/registrasiController')
 const {
   listPeserta, detailPeserta, verifikasiPeserta, dashboard,
   listTokenPending, detailTokenPending, verifikasiTokenPending,
@@ -45,6 +45,7 @@ app.get('/api/program', (req, res) => res.json({
 }))
 
 app.post('/api/registrasi', upload.single('struk'), submitRegistrasi)
+app.get('/api/registrasi/validasi/nik', validasiNIK)
 app.get('/api/registrasi/:idRegistrasi', cekStatus)
 
 app.get('/api/pemenang', async (req, res, next) => {

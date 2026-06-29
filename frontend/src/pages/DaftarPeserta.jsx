@@ -91,9 +91,9 @@ export default function DaftarPeserta() {
                   className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl border ${rankBg(i + 1)} transition-shadow hover:shadow-sm`}
                 >
                   {/* Rank */}
-                  <div className="w-8 flex items-center justify-center flex-shrink-0">
+                  {/* <div className="w-8 flex items-center justify-center flex-shrink-0">
                     <RankIcon rank={i + 1} />
-                  </div>
+                  </div> */}
 
                   {/* Avatar */}
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg flex-shrink-0 ${
@@ -108,7 +108,11 @@ export default function DaftarPeserta() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-gray-900 truncate">{p.namaLengkap}</p>
-                    <p className="text-xs text-gray-400 font-mono">{p.idRegistrasi}</p>
+                    <p className="text-xs text-gray-400 font-mono">
+                      {p.idRegistrasi
+                        ? `${p.idRegistrasi.slice(0, 4)}${'*'.repeat(Math.max(0, p.idRegistrasi.length - 6))}${p.idRegistrasi.slice(-3)}`
+                        : '-'}
+                    </p>
                   </div>
 
                   {/* Token */}

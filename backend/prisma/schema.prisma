@@ -25,7 +25,11 @@ model Peserta {
   namaLengkap     String           @map("nama_lengkap")
   nik             String           @unique
   noHp            String           @map("no_hp")
-  // IMEI disimpan sebagai array JSON: ["351234567890123", "351234567890124"]
+  // IMEI disimpan sebagai array JSON dengan product info:
+  // [
+  //   { imei: "351234567890123", productId: 123, productName: "BREX - HAIR DRYER" },
+  //   { imei: "351234567890124", productId: 124, productName: "Another Product" }
+  // ]
   imeiList        Json             @default("[]") @map("imei_list")
   nominalBeli     Decimal          @map("nominal_beli") @db.Decimal(15, 2)
   strukUrl        String           @map("struk_url")
@@ -34,8 +38,6 @@ model Peserta {
   alasanReject    String?          @map("alasan_reject")
   jumlahToken     Int              @default(0) @map("jumlah_token")
   ikutUndian      Boolean          @default(false) @map("ikut_undian")
-  odooProductId   Int?             @map("odoo_product_id")
-  odooProductName String?          @map("odoo_product_name")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
@@ -51,7 +53,11 @@ model Peserta {
 model TokenPending {
   id           String             @id @default(uuid())
   pesertaId    String             @map("peserta_id")
-  // IMEI baru yang didaftarkan pada pembelian ini
+  // IMEI baru yang didaftarkan pada pembelian ini dengan product info:
+  // [
+  //   { imei: "351234567890123", productId: 123, productName: "BREX - HAIR DRYER" },
+  //   { imei: "351234567890124", productId: 124, productName: "Another Product" }
+  // ]
   imeiList     Json               @default("[]") @map("imei_list")
   nominalBeli  Decimal            @map("nominal_beli") @db.Decimal(15, 2)
   strukUrl     String             @map("struk_url")

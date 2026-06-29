@@ -7,7 +7,7 @@ import { adminApiHelper } from '../api/client'
 const navItems = [
   { to: '/admin',                label: 'Dashboard',       Icon: LayoutDashboard, exact: true },
   { to: '/admin/peserta',        label: 'Peserta',         Icon: Users },
-  { to: '/admin/token-pending',  label: 'Pembelian Ulang', Icon: RefreshCw, badgeKey: 'pendingUlang' },
+  { to: '/admin/token-pending',  label: 'Pending Token', Icon: RefreshCw, badgeKey: 'pendingUlang' },
   { to: '/admin/undian',         label: 'Undian',          Icon: Trophy },
   { to: '/admin/pemenang',       label: 'Pemenang',        Icon: Gift },
   { to: '/admin/users',          label: 'Manajemen',       Icon: UserCog},

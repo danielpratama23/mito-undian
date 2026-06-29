@@ -19,7 +19,6 @@ const prisma = new PrismaClient()
 const imeiSchema = z
   .string()
   .min(9, 'Setiap IMEI / Unique Code minimal 9 digit')
-  .regex(/^\d+$/, 'IMEI / Unique Code hanya boleh angka')
 
 // ── Schema registrasi baru ────────────────────────────────────────────────────
 const registrasiSchema = z.object({
@@ -69,11 +68,11 @@ async function validasiSemuaIMEI(imeiList) {
 
 // ── Cek IMEI duplikat di peserta.imei_list + token_pending.imei_list ─────────
 async function cekIMEIDuplikat(imeiList) {
-  // Cek di semua peserta (imei_list adalah JSONB array)
+  // Cek di semua peserta (imei_list adalah JSONB array dengan struktur: [{ imei, productId, productName }, ...])
   const pesertaDuplikat = await prisma.$queryRaw`
-    SELECT id_registrasi, imei_list
+    SELECT id_registrasi
     FROM peserta
-    WHERE imei_list ?| ${imeiList}::text[]
+    WHERE imei_list @> ${JSON.stringify(imeiList.map(i => ({ imei: i, productId: null, productName: null })))}::jsonb
     LIMIT 1
   `
 
@@ -81,7 +80,7 @@ async function cekIMEIDuplikat(imeiList) {
   const pendingDuplikat = await prisma.$queryRaw`
     SELECT id
     FROM token_pending
-    WHERE imei_list ?| ${imeiList}::text[]
+    WHERE imei_list @> ${JSON.stringify(imeiList.map(i => ({ imei: i, productId: null, productName: null })))}::jsonb
     LIMIT 1
   `
 
@@ -90,10 +89,10 @@ async function cekIMEIDuplikat(imeiList) {
     // Cek per-IMEI untuk pesan error yang informatif
     for (const imei of imeiList) {
       const cekPeserta = await prisma.$queryRaw`
-        SELECT 1 FROM peserta WHERE imei_list @> ${JSON.stringify([imei])}::jsonb LIMIT 1
+        SELECT 1 FROM peserta WHERE imei_list @> ${JSON.stringify([{ imei, productId: null, productName: null }])}::jsonb LIMIT 1
       `
       const cekPending = await prisma.$queryRaw`
-        SELECT 1 FROM token_pending WHERE imei_list @> ${JSON.stringify([imei])}::jsonb LIMIT 1
+        SELECT 1 FROM token_pending WHERE imei_list @> ${JSON.stringify([{ imei, productId: null, productName: null }])}::jsonb LIMIT 1
       `
       if (cekPeserta.length > 0 || cekPending.length > 0) duplikat.push(imei)
     }
@@ -153,7 +152,13 @@ async function submitRegistrasi(req, res) {
       })
     }
 
-    const odooValid = odooResults.find(r => r.valid)
+    // Struktur imeiList dengan product info: [{ imei, productId, productName }, ...]
+    const imeiListWithProducts = odooResults.map(r => ({
+      imei: r.imei,
+      productId: r.productId || null,
+      productName: r.productName || null,
+    }))
+
     const strukUrl  = await uploadFile(req.file, `struk/${data.nik}`)
     const idRegistrasi = generateIdRegistrasi()
 
@@ -163,12 +168,10 @@ async function submitRegistrasi(req, res) {
         namaLengkap:     data.namaLengkap,
         nik:             data.nik,
         noHp:            data.noHp,
-        imeiList:        data.imeiList,
+        imeiList:        imeiListWithProducts,
         nominalBeli:     data.nominalBeli,
         strukUrl,
         statusVerif:     'PENDING',
-        odooProductId:   odooValid?.productId   || null,
-        odooProductName: odooValid?.productName || null,
       },
     })
 
@@ -226,12 +229,19 @@ async function handlePembelianUlang(req, res, pesertaExist) {
     })
   }
 
+  // Struktur imeiList dengan product info: [{ imei, productId, productName }, ...]
+  const imeiListWithProducts = odooResults.map(r => ({
+    imei: r.imei,
+    productId: r.productId || null,
+    productName: r.productName || null,
+  }))
+
   const strukUrl = await uploadFile(req.file, `struk-ulang/${pesertaExist.id}`)
 
   const tokenPending = await prisma.tokenPending.create({
     data: {
       pesertaId:   pesertaExist.id,
-      imeiList:    data.imeiList,
+      imeiList:    imeiListWithProducts,
       nominalBeli: data.nominalBeli,
       strukUrl,
       status:      'PENDING',
@@ -289,4 +299,49 @@ async function cekStatus(req, res) {
   return res.json({ success: true, data: peserta })
 }
 
-module.exports = { submitRegistrasi, cekStatus }
+// ── GET /api/registrasi/validasi/nik ──────────────────────────────────────────
+// Validasi NIK: cek apakah sudah terdaftar dan return data jika ada
+async function validasiNIK(req, res) {
+  try {
+    const { nik } = req.query
+    
+    if (!nik || nik.length !== 16) {
+      return res.status(400).json({ success: false, message: 'NIK harus 16 digit' })
+    }
+
+    const peserta = await prisma.peserta.findUnique({
+      where: { nik },
+      select: {
+        id: true,
+        idRegistrasi: true,
+        namaLengkap: true,
+        noHp: true,
+        imeiList: true,
+        statusVerif: true,
+        jumlahToken: true,
+      },
+    })
+
+    if (!peserta) {
+      return res.json({ success: true, found: false })
+    }
+
+    return res.json({
+      success: true,
+      found: true,
+      data: {
+        idRegistrasi: peserta.idRegistrasi,
+        namaLengkap: peserta.namaLengkap,
+        noHp: peserta.noHp,
+        imeiList: peserta.imeiList,
+        statusVerif: peserta.statusVerif,
+        jumlahToken: peserta.jumlahToken,
+      },
+    })
+  } catch (err) {
+    console.error('[Validasi NIK] Error:', err)
+    return res.status(500).json({ success: false, message: 'Terjadi kesalahan sistem' })
+  }
+}
+
+module.exports = { submitRegistrasi, cekStatus, validasiNIK }

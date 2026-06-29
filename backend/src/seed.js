@@ -48,7 +48,6 @@ async function main() {
         statusVerif: 'APPROVED',
         jumlahToken: 3,
         ikutUndian: true,
-        odooProductName: 'MITO A39',
       },
       {
         idRegistrasi: 'MITO-20260801-1002',
@@ -61,7 +60,6 @@ async function main() {
         statusVerif: 'APPROVED',
         jumlahToken: 4,
         ikutUndian: true,
-        odooProductName: 'MITO A50',
       },
       {
         idRegistrasi: 'MITO-20260802-1003',
@@ -74,7 +72,6 @@ async function main() {
         statusVerif: 'PENDING',
         jumlahToken: 0,
         ikutUndian: false,
-        odooProductName: null,
       },
       {
         idRegistrasi: 'MITO-20260802-1004',
@@ -87,7 +84,6 @@ async function main() {
         statusVerif: 'APPROVED',
         jumlahToken: 6,
         ikutUndian: true,
-        odooProductName: 'MITO A80 Pro',
       },
       {
         idRegistrasi: 'MITO-20260803-1005',

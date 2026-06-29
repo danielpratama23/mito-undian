@@ -5,6 +5,7 @@ import { Search, ChevronRight, Loader2, RefreshCw, CheckCircle2, XCircle, Filter
 import { toast } from 'react-toastify'
 import { adminApiHelper } from '../../api/client'
 import { formatRupiah, formatTanggalWaktu } from '../../utils'
+import Swal from 'sweetalert2'
 
 const STATUS_TABS = [
   { value: '',         label: 'Semua' },
@@ -17,6 +18,16 @@ function statusClass(s) {
   if (s === 'APPROVED') return 'badge-approved'
   if (s === 'REJECTED') return 'badge-rejected'
   return 'badge-pending'
+}
+
+// Normalisasi imeiList — handle array of strings ATAU array of objects {imei, productId, productName}
+function normalizeImeiList(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw.map(x => {
+    if (typeof x === 'string') return x
+    if (typeof x === 'object' && x !== null) return x.imei || String(x)
+    return String(x)
+  })
 }
 
 // ── Modal detail + verifikasi ────────────────────────────────────────────────
@@ -34,7 +45,7 @@ function DetailModal({ item, onClose, onDone }) {
         toast.success(res.message)
         if (res.data?.isSuspicious) toast.warning(`⚠️ ${res.data?.catatan}`, { autoClose: 8000 })
       } else {
-        toast.info('Token ditolak')
+        toast.info('Pending Token ditolak')
       }
       queryClient.invalidateQueries({ queryKey: ['admin-token-pending'] })
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] })
@@ -43,17 +54,107 @@ function DetailModal({ item, onClose, onDone }) {
     onError: err => toast.error(err?.message || 'Gagal verifikasi'),
   })
 
-  function handleApprove() {
-    if (!confirm('Setujui pembelian ini dan tambahkan token?')) return
-    mutation.mutate({ action: 'APPROVE' })
-  }
+    function handleApprove() {
+      Swal.fire({
+        icon: 'question',
+        title: 'Approve Pembelian?',
+        html: `
+          <div style="text-align:left">
+            <div style="
+              background:#f8fafc;
+              border:1px solid #e5e7eb;
+              border-radius:16px;
+              padding:16px;
+              margin-top:8px;
+            ">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span style="font-size:20px">🎁</span>
+                <strong>Token akan langsung ditambahkan ke akun peserta.</strong>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;color:#ef4444">
+                <span>⚠️</span>
+                <span>Aksi ini tidak dapat dibatalkan.</span>
+              </div>
+            </div>
+          </div>
+        `,
+        confirmButtonText: 'Approve Sekarang',
+        cancelButtonText: 'Batal',
+        showCancelButton: true,
+        reverseButtons: true,
+        allowOutsideClick: false,
+        buttonsStyling: false,
+        customClass: {
+          popup: 'swal2-popup',
+          confirmButton: 'swal2-confirm',
+          cancelButton: 'swal2-cancel',
+        },
+      }).then((result) => {
+        if (result.isConfirmed) {
+          mutation.mutate({ action: 'APPROVE' })
+        }
+      })
+    }
+
   function handleReject() {
-    if (!alasan.trim()) { toast.error('Alasan reject wajib diisi'); return }
-    mutation.mutate({ action: 'REJECT', alasanReject: alasan })
-    setShowReject(false)
+  if (!alasan.trim()) {
+    toast.error('Alasan reject wajib diisi')
+    return
   }
 
-  const imeiList = Array.isArray(item.imeiList) ? item.imeiList : []
+  Swal.fire({
+    icon: 'warning',
+    title: 'Reject Pembelian?',
+    html: `
+      <div style="text-align:left">
+        <div style="
+          background:#fef2f2;
+          border:1px solid #fecaca;
+          border-radius:16px;
+          padding:16px;
+          margin-top:8px;
+        ">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:20px">❌</span>
+            <strong>Pembelian akan ditolak.</strong>
+          </div>
+
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+            <span>📝</span>
+            <span><b>Alasan:</b> ${alasan}</span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;color:#dc2626">
+            <span>⚠️</span>
+            <span>Peserta harus mengajukan pembelian ulang.</span>
+          </div>
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Reject Sekarang',
+    cancelButtonText: 'Batal',
+    reverseButtons: true,
+    allowOutsideClick: false,
+    buttonsStyling: false,
+    customClass: {
+      popup: 'swal2-popup',
+      confirmButton: 'swal2-confirm swal2-deny-style',
+      cancelButton: 'swal2-cancel',
+    },
+  }).then((result) => {
+    if (result.isConfirmed) {
+      mutation.mutate({
+        action: 'REJECT',
+        alasanReject: alasan,
+      })
+      setShowReject(false)
+    }
+  })
+}
+
+  const imeiList = normalizeImeiList(item.imeiList)
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
@@ -63,7 +164,7 @@ function DetailModal({ item, onClose, onDone }) {
           <div>
             <div className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4 text-white" />
-              <span className="text-white font-bold">Token Pending</span>
+              <span className="text-white font-bold">Pending Token</span>
             </div>
             <p className="text-red-100 text-sm mt-0.5">{item.peserta?.namaLengkap}</p>
             <p className="text-red-200 text-xs font-mono">{item.peserta?.idRegistrasi}</p>
@@ -232,7 +333,7 @@ export default function TokenPendingList() {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <RefreshCw className="w-5 h-5 text-mito-red" />
-          <h1 className="text-2xl font-black text-gray-900">Token Pending</h1>
+          <h1 className="text-2xl font-black text-gray-900">Pending Token</h1>
         </div>
         <p className="text-sm text-gray-500">
           Peserta yang sudah terdaftar dan membeli produk tambahan — perlu diverifikasi untuk menambah token
@@ -276,12 +377,12 @@ export default function TokenPendingList() {
         ) : items.length === 0 ? (
           <div className="text-center py-16">
             <Filter className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-            <p className="text-gray-400 text-sm">Tidak ada data Token Pending</p>
+            <p className="text-gray-400 text-sm">Tidak ada data Pending Token</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
             {items.map(item => {
-              const imeiList = Array.isArray(item.imeiList) ? item.imeiList : []
+              const imeiList = normalizeImeiList(item.imeiList)
               return (
                 <button
                   key={item.id}

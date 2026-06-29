@@ -35,3 +35,79 @@
   .badge-approved { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800; }
   .badge-rejected { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800; }
 }
+
+/* ===== SweetAlert2 Theme ===== */
+
+.swal2-popup {
+  border-radius: 24px !important;
+  padding: 24px !important;
+  font-family: 'Inter', sans-serif !important;
+  box-shadow:
+    0 20px 40px rgba(0,0,0,.12),
+    0 8px 16px rgba(0,0,0,.08) !important;
+}
+
+.swal2-title {
+  font-size: 1.45rem !important;
+  font-weight: 800 !important;
+  color: #111827 !important;
+}
+
+.swal2-html-container {
+  font-size: .95rem !important;
+  color: #6b7280 !important;
+  line-height: 1.7 !important;
+  margin-top: .75rem !important;
+}
+
+.swal2-icon {
+  border-width: 3px !important;
+}
+
+.swal2-actions {
+  width: 100%;
+  gap: 12px;
+  margin-top: 24px !important;
+}
+
+.swal2-confirm,
+.swal2-cancel {
+  flex: 1;
+  margin: 0 !important;
+  border-radius: 14px !important;
+  padding: 12px 20px !important;
+  font-size: .95rem !important;
+  font-weight: 700 !important;
+  transition: .2s ease;
+}
+
+.swal2-confirm {
+  background: #E31E24 !important;   /* mito-red */
+  color: #f3f4f6 !important;        /* gray-100 */
+}
+
+.swal2-confirm:hover {
+  background: #c61b20 !important;
+  transform: translateY(-2px);
+}
+
+.swal2-cancel {
+  background: #e2e2e2 !important;
+  color: #374151 !important;
+}
+
+.swal2-cancel:hover {
+  background: #e5e7eb !important;
+}
+
+.swal2-backdrop-show {
+  backdrop-filter: blur(6px);
+}
+
+.swal2-confirm.swal2-deny-style {
+  background: #dc2626 !important;
+}
+
+.swal2-confirm.swal2-deny-style:hover {
+  background: #b91c1c !important;
+}
