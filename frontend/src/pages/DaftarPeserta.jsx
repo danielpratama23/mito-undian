@@ -128,7 +128,7 @@ export default function DaftarPeserta() {
         )}
 
         <p className="text-center text-xs text-gray-400 mt-10">
-          Data diperbarui secara berkala. Nama ditampilkan lengkap, nomor HP disamarkan.
+          Data diperbarui secara berkala
         </p>
       </div>
     </div>
