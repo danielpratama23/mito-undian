@@ -1,8 +1,8 @@
 {
   "framework": null,
   "outputDirectory": "frontend/dist",
-  "installCommand": "cd backend && npm install --include=dev && cd ../frontend && npm install --include=dev",
-  "buildCommand": "cd frontend && node node_modules/vite/bin/vite.js build && cd ../backend && npm run vercel-build",
+  "installCommand": "rm -rf frontend/node_modules backend/node_modules && cd backend && npm install --include=dev && cd ../frontend && npm install --include=dev",
+  "buildCommand": "cd frontend && npx --yes vite build && cd ../backend && npm run vercel-build",
   "functions": {
     "api/index.js": {
       "maxDuration": 30
