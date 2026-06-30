@@ -1,112 +1,79 @@
-/**
- * geminiService.js
- * Menggunakan Google Gemini AI untuk:
- * 1. Kalkulasi jumlah token setelah admin approve
- * 2. Validasi konsistensi data (nominal vs produk)
- */
+const { GoogleGenerativeAI } = require('@google/generative-ai')
 
-const fetch = require('node-fetch');
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-
-const TOKEN_PER_RUPIAH = 500000; // Rp500.000 = 1 token
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
 
 /**
- * Hitung token dan validasi data peserta via Gemini AI
- * Dipanggil SETELAH admin approve registrasi
+ * Analyze receipt image with Gemini Vision API
+ * Returns { isValid, productName, nominal, message }
  */
-async function hitungToken({ nama, nik, imei, nominalBeli, productName, odooHarga }) {
-  const prompt = `Kamu adalah sistem kalkulasi token otomatis untuk program undian MITO Jawa Timur.
-
-DATA PESERTA YANG SUDAH DIVERIFIKASI ADMIN:
-- Nama: ${nama}
-- NIK: ${nik}
-- IMEI Produk: ${imei}
-- Nama Produk (dari sistem MITO/Odoo): ${productName || 'Tidak ditemukan'}
-- Harga Jual Produk di Sistem (Odoo): Rp${Number(odooHarga || 0).toLocaleString('id-ID')}
-- Nominal di Struk Pembelian: Rp${Number(nominalBeli).toLocaleString('id-ID')}
-
-ATURAN KALKULASI TOKEN:
-- Setiap kelipatan Rp500.000 dari nominal pembelian valid = 1 token
-- Nominal dibulatkan ke bawah (floor)
-- Contoh: Rp1.200.000 → 2 token, Rp500.000 → 1 token, Rp499.999 → 0 token
-- Jika nominal struk LEBIH RENDAH dari harga produk di sistem lebih dari 10%, tandai sebagai suspicious
-
-TUGASMU:
-Hitung jumlah token yang berhak diterima peserta berdasarkan nominal struk.
-Berikan analisis singkat dalam Bahasa Indonesia.
-
-RESPOND ONLY IN VALID JSON (no markdown, no backticks):
-{
-  "token_count": <integer, minimal 0>,
-  "nominal_valid": <integer dalam rupiah, nominal yang digunakan untuk kalkulasi>,
-  "is_suspicious": <boolean>,
-  "catatan": "<penjelasan singkat kalkulasi dan analisis konsistensi data, max 200 karakter>"
-}`;
-
+async function analyzeReceipt(imageBuffer) {
   try {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.1,    // rendah untuk konsistensi
-          maxOutputTokens: 512,
-          topP: 0.8,
+    const base64Image = imageBuffer.toString('base64')
+
+    const prompt = `You are a receipt analyzer for MITO (MITO/MITOCHIBA/BREX) product verification.
+
+Analyze this receipt image and extract:
+1. Product name/brand (look for: MITO, MITOCHIBA, BREX, or similar)
+2. Total amount/nominal (in Rupiah, format: number only without Rp or dots)
+
+Rules:
+- If the receipt contains MITO, MITOCHIBA, or BREX products, return isValid: true
+- If no MITO/MITOCHIBA/BREX product found, return isValid: false with message "Struk tidak mengandung produk MITO/MITOCHIBA/BREX"
+- Extract the total amount as a number (e.g., 500000 for Rp 500.000)
+- If you cannot read the amount, return nominal: 0
+
+Respond ONLY in this JSON format (no markdown, no code blocks):
+{
+  "isValid": true/false,
+  "productName": "detected product name or null",
+  "nominal": 0,
+  "message": "success message or error message"
+}`
+
+    const result = await model.generateContent([
+      {
+        text: prompt
+      },
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: base64Image
         }
-      })
-    });
+      }
+    ])
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Gemini API error ${response.status}: ${errText}`);
+    const response = await result.response
+    const text = response.text()
+
+    // Parse JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      return {
+        isValid: false,
+        productName: null,
+        nominal: 0,
+        message: 'Gagal membaca struk. Coba lagi.'
+      }
     }
 
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // Parse JSON dari response Gemini
-    const cleanText = rawText.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleanText);
-
-    // Validasi struktur response
-    if (typeof parsed.token_count !== 'number' || parsed.token_count < 0) {
-      throw new Error('Gemini mengembalikan token_count tidak valid');
-    }
-
-    // Fallback kalkulasi manual jika Gemini aneh
-    const tokenManual = Math.floor(Number(nominalBeli) / TOKEN_PER_RUPIAH);
-    if (parsed.token_count > tokenManual * 2) {
-      console.warn('[GeminiService] Token dari AI terlalu besar, pakai kalkulasi manual');
-      parsed.token_count = tokenManual;
-      parsed.catatan = `[Auto-corrected] Token dihitung manual: ${tokenManual} token`;
-    }
-
+    const parsed = JSON.parse(jsonMatch[0])
     return {
-      tokenCount: parsed.token_count,
-      nominalValid: parsed.nominal_valid || Number(nominalBeli),
-      isSuspicious: parsed.is_suspicious || false,
-      catatan: parsed.catatan,
-      geminiRaw: data,
-    };
+      isValid: parsed.isValid || false,
+      productName: parsed.productName || null,
+      nominal: parsed.nominal || 0,
+      message: parsed.message || 'Struk berhasil dianalisis'
+    }
 
-  } catch (err) {
-    console.error('[GeminiService] Error:', err.message);
-
-    // Fallback: kalkulasi manual tanpa AI
-    const tokenManual = Math.floor(Number(nominalBeli) / TOKEN_PER_RUPIAH);
+  } catch (error) {
+    console.error('[Gemini] Error analyzing receipt:', error)
     return {
-      tokenCount: tokenManual,
-      nominalValid: Number(nominalBeli),
-      isSuspicious: false,
-      catatan: `[Fallback kalkulasi manual] Gemini tidak tersedia. Token = floor(${nominalBeli} / 500000) = ${tokenManual}`,
-      geminiRaw: null,
-      error: err.message,
-    };
+      isValid: false,
+      productName: null,
+      nominal: 0,
+      message: 'Gagal menganalisis struk. Coba lagi.'
+    }
   }
 }
 
-module.exports = { hitungToken };
+module.exports = { analyzeReceipt }

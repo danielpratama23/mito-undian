@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'react-toastify'
-import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw, Lock, CheckIcon } from 'lucide-react'
+import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw, Lock, CheckIcon, Camera, ScanLine } from 'lucide-react'
 import axios from 'axios'
 import { formatInputRupiah, hitungEstimasiToken } from '../utils'
+import { BrowserMultiFormatReader } from '@zxing/browser'
 
 const imeiItem = z.object({
   value: z.string()
@@ -138,6 +139,12 @@ export default function Registrasi() {
   const [nikData, setNikData] = useState(null) // Data NIK yang sudah terdaftar
   const [validatingNIK, setValidatingNIK] = useState(false)
   const [nikError, setNikError] = useState(null)
+  const [showScanner, setShowScanner] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [analyzingReceipt, setAnalyzingReceipt] = useState(false)
+  const [receiptResult, setReceiptResult] = useState(null)
+  const videoRef = useRef(null)
+  const codeReaderRef = useRef(null)
 
   const { register, control, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, getValues } = useForm({
     resolver: zodResolver(schema),
@@ -208,6 +215,118 @@ export default function Registrasi() {
       const reader = new FileReader()
       reader.onload = ev => setPreview(ev.target.result)
       reader.readAsDataURL(file)
+    }
+  }
+
+  // ── Scan IMEI dengan kamera ──────────────────────────────────────────────────
+  const startScan = async () => {
+    setShowScanner(true)
+    setScanning(true)
+    
+    try {
+      const codeReader = new BrowserMultiFormatReader()
+      codeReaderRef.current = codeReader
+      
+      const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices()
+      const selectedDevice = videoInputDevices.find(d => d.label.toLowerCase().includes('back')) || videoInputDevices[0]
+      
+      if (!selectedDevice) {
+        throw new Error('Tidak ada kamera yang terdeteksi')
+      }
+      
+      await codeReader.decodeFromVideoDevice(selectedDevice.deviceId, videoRef.current, (result, err) => {
+        if (result) {
+          // Cek apakah IMEI valid (minimal 9 digit)
+          const imei = result.getText().trim()
+          if (imei.length >= 9 && /^\d+$/.test(imei)) {
+            // Tambah ke field IMEI yang masih kosong, atau buat baru
+            const currentValues = getValues('imeiItems').map(i => i.value.trim())
+            if (!currentValues.includes(imei) && fields.length < 10) {
+              append({ value: imei })
+              toast.success(`IMEI terdeteksi: ${imei}`)
+              stopScan()
+            } else if (currentValues.includes(imei)) {
+              toast.warning('IMEI sudah ada di daftar')
+            } else {
+              toast.warning('Maksimal 10 IMEI')
+            }
+          }
+        }
+        if (err) {
+          // Ignore scan errors (tidak ada barcode di frame)
+        }
+      })
+    } catch (err) {
+      console.error('Scan error:', err)
+      toast.error('Gagal mengakses kamera. Pastikan izin kamera sudah diberikan.')
+      setShowScanner(false)
+      setScanning(false)
+    }
+  }
+
+  const stopScan = () => {
+    if (codeReaderRef.current) {
+      codeReaderRef.current.reset()
+      codeReaderRef.current = null
+    }
+    setScanning(false)
+    setShowScanner(false)
+  }
+
+  // Cleanup scanner on unmount
+  useEffect(() => {
+    return () => {
+      if (codeReaderRef.current) {
+        codeReaderRef.current.reset()
+      }
+    }
+  }, [])
+
+  // ── Analyze struk dengan Gemini ─────────────────────────────────────────────
+  const analyzeReceipt = async (file) => {
+    setAnalyzingReceipt(true)
+    setReceiptResult(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append('struk', file)
+      
+      const res = await axios.post('/api/analyze-receipt', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      
+      if (res.data.success) {
+        const result = res.data.data
+        setReceiptResult(result)
+        
+        if (result.isValid) {
+          // Auto-fill nominal jika valid
+          if (result.nominal > 0) {
+            const formatted = formatInputRupiah(result.nominal.toString())
+            setValue('nominalBeli', formatted)
+            toast.success(`✓ Struk valid (${result.productName || 'Produk MITO'}). Nominal: Rp ${result.nominal.toLocaleString('id-ID')}`)
+          } else {
+            toast.success(`✓ Struk valid (${result.productName || 'Produk MITO'})`)
+          }
+        } else {
+          toast.error(result.message || 'Struk tidak mengandung produk MITO/MITOCHIBA/BREX')
+        }
+      }
+    } catch (err) {
+      console.error('Analyze receipt error:', err)
+      toast.error('Gagal menganalisis struk. Coba lagi.')
+    } finally {
+      setAnalyzingReceipt(false)
+    }
+  }
+
+  // Override handleFileChange untuk auto-analyze
+  const handleFileChangeWithAnalysis = async (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      handleFileChange(e)
+      // Auto analyze setelah upload
+      await analyzeReceipt(file)
     }
   }
 
@@ -332,6 +451,33 @@ export default function Registrasi() {
             <p className="text-xs text-gray-400 mb-3">
               Cek IMEI di dus/kotak produk atau menu Pengaturan › Tentang Ponsel
             </p>
+            
+            {/* Scanner Modal */}
+            {showScanner && (
+              <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl p-4 max-w-md w-full">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-gray-800">Scan IMEI / Barcode</h3>
+                    <button type="button" onClick={stopScan} className="text-gray-400 hover:text-gray-600">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                    <video ref={videoRef} className="w-full h-full" playsInline />
+                    {scanning && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="border-2 border-white/50 rounded-lg w-48 h-48 flex items-center justify-center">
+                          <ScanLine className="w-16 h-16 text-white animate-pulse" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Arahkan kamera ke barcode/QR code pada produk
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               {fields.map((field, index) => (
                 <div key={field.id} className="flex gap-2 items-start">
@@ -369,6 +515,14 @@ export default function Registrasi() {
                 <Plus className="w-4 h-4" /> Tambah Produk Lain
               </button>
             )}
+            <button
+              type="button"
+              onClick={startScan}
+              disabled={scanning || fields.length >= 10}
+              className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Camera className="w-4 h-4" /> Scan dengan Kamera
+            </button>
             {errors.imeiItems && !Array.isArray(errors.imeiItems) && (
               <p className="text-red-500 text-xs mt-1">{errors.imeiItems.message}</p>
             )}
@@ -406,9 +560,42 @@ export default function Registrasi() {
                   <span className="text-xs text-gray-400 mt-1">JPG, PNG, WebP (max 5MB)</span>
                 </>
               )}
-              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileChangeWithAnalysis} />
             </label>
             {errors.struk && <p className="text-red-500 text-xs mt-1">{errors.struk.message}</p>}
+            
+            {/* Analyzing indicator */}
+            {analyzingReceipt && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Menganalisis struk dengan AI...</span>
+              </div>
+            )}
+            
+            {/* Receipt result */}
+            {receiptResult && (
+              <div className={`mt-2 p-3 rounded-lg text-sm ${receiptResult.isValid ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                {receiptResult.isValid ? (
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">✓ Struk valid</p>
+                      {receiptResult.productName && (
+                        <p className="text-xs mt-0.5">Produk: {receiptResult.productName}</p>
+                      )}
+                      {receiptResult.nominal > 0 && (
+                        <p className="text-xs mt-0.5">Nominal: Rp {receiptResult.nominal.toLocaleString('id-ID')}</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <p>{receiptResult.message || 'Struk tidak mengandung produk MITO/MITOCHIBA/BREX'}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Info */}
