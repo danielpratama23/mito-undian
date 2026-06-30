@@ -7,6 +7,7 @@ import { toast } from 'react-toastify'
 import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw, Lock, CheckIcon, Camera, ScanLine } from 'lucide-react'
 import axios from 'axios'
 import { formatInputRupiah, hitungEstimasiToken } from '../utils'
+// @zxing/browser di-import dynamically di dalam startScan untuk avoid SSR issues
 
 const imeiItem = z.object({
   value: z.string()
@@ -223,6 +224,8 @@ export default function Registrasi() {
     setScanning(true)
     
     try {
+      // Dynamic import untuk avoid SSR/build issues di Vercel
+      const { BrowserMultiFormatReader } = await import('@zxing/browser')
       const codeReader = new BrowserMultiFormatReader()
       codeReaderRef.current = codeReader
       
