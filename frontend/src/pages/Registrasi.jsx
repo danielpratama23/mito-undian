@@ -7,7 +7,6 @@ import { toast } from 'react-toastify'
 import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw, Lock, CheckIcon, Camera, ScanLine } from 'lucide-react'
 import axios from 'axios'
 import { formatInputRupiah, hitungEstimasiToken } from '../utils'
-import { BrowserMultiFormatReader } from '@zxing/browser'
 
 const imeiItem = z.object({
   value: z.string()
