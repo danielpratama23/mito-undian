@@ -255,10 +255,10 @@ export default function Registrasi() {
   }
 
   const stopScan = () => {
-    if (codeReaderRef.current) {
-      codeReaderRef.current.reset()
-      codeReaderRef.current = null
+    if (codeReaderRef.current?.stream) {
+      codeReaderRef.current.stream.getTracks().forEach(track => track.stop())
     }
+    codeReaderRef.current = null
     setScanning(false)
     setShowScanner(false)
   }
@@ -266,9 +266,10 @@ export default function Registrasi() {
   // Cleanup scanner on unmount
   useEffect(() => {
     return () => {
-      if (codeReaderRef.current) {
-        codeReaderRef.current.reset()
+      if (codeReaderRef.current?.stream) {
+        codeReaderRef.current.stream.getTracks().forEach(track => track.stop())
       }
+      codeReaderRef.current = null
     }
   }, [])
 
