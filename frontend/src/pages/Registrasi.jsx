@@ -241,11 +241,6 @@ export default function Registrasi() {
       // Simpan stream untuk cleanup
       codeReaderRef.current = { stream }
       
-      // TODO: Implementasi barcode detection menggunakan native API
-      // Untuk sekarang, user harus input manual IMEI
-      toast.info('Kamera aktif. Silakan input IMEI secara manual untuk sekarang.')
-      setTimeout(() => stopScan(), 2000)
-      
     } catch (err) {
       console.error('Scan error:', err)
       toast.error('Gagal mengakses kamera. Pastikan izin kamera sudah diberikan.')
@@ -497,23 +492,25 @@ export default function Registrasi() {
                 </div>
               ))}
             </div>
-            {fields.length < 10 && (
+            <div className="flex gap-2 mt-3">
+              {fields.length < 10 && (
+                <button
+                  type="button"
+                  onClick={() => append({ value: '' })}
+                  className="flex items-center gap-1.5 text-sm text-mito-red hover:text-mito-redDark font-medium transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> Tambah Produk Lain
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => append({ value: '' })}
-                className="mt-3 flex items-center gap-1.5 text-sm text-mito-red hover:text-mito-redDark font-medium transition-colors"
+                onClick={startScan}
+                disabled={scanning || fields.length >= 10}
+                className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="w-4 h-4" /> Tambah Produk Lain
+                <Camera className="w-4 h-4" /> Scan dengan Kamera
               </button>
-            )}
-            <button
-              type="button"
-              onClick={startScan}
-              disabled={scanning || fields.length >= 10}
-              className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Camera className="w-4 h-4" /> Scan dengan Kamera
-            </button>
+            </div>
             {errors.imeiItems && !Array.isArray(errors.imeiItems) && (
               <p className="text-red-500 text-xs mt-1">{errors.imeiItems.message}</p>
             )}
