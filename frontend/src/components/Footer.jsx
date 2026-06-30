@@ -10,9 +10,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 bg-mito-red rounded-lg flex items-center justify-center">
-                <img src="/logo_mito.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain"/>
-              </div>
+              <img src="/logo_mito.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain"/>
               <div>
                 <div className="font-black text-xl leading-none">MITO</div>
                 <div className="text-xs text-gray-400 leading-none">UNDIAN JAWA TIMUR 2026</div>

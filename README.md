@@ -1,4 +1,4 @@
-# Microsite Undian MITO Jawa Timur 2026
+# MITO Undian Website Undian MITO Jawa Timur 2026
 
 Program undian berhadiah eksklusif untuk pelanggan MITO di Jawa Timur.  
 Validasi IMEI via Odoo 18 XML-RPC · Kalkulasi token via Google Gemini AI · React 18 + Node.js + PostgreSQL.
@@ -153,7 +153,7 @@ docker-compose logs -f backend
 ```
 
 Akses:
-- Microsite publik: `http://your-server`
+- MITO Undian Website publik: `http://your-server`
 - Admin panel: `http://your-server/admin`
 
 ---
@@ -198,7 +198,7 @@ Pastikan di Odoo 18:
 ```
 [1] Konsumen beli produk MITO
       ↓
-[2] Buka microsite → isi form registrasi + upload struk
+[2] Buka MITO Undian Website → isi form registrasi + upload struk
       ↓
 [3] Backend:
     ├─ Validasi format (Zod)
@@ -234,7 +234,7 @@ Pastikan di Odoo 18:
 
 ---
 
-## Halaman Microsite
+## Halaman MITO Undian Website
 
 | URL | Halaman |
 |---|---|
