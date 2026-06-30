@@ -14,8 +14,8 @@ const steps = [
   {
     Icon: Monitor,
     no: '02',
-    title: 'Akses Microsite & Isi Form',
-    desc: 'Buka microsite program undian ini, klik tombol "Daftar Sekarang", dan isi form registrasi dengan data diri yang benar sesuai KTP.',
+    title: 'Akses MITO Undian Website & Isi Form',
+    desc: 'Buka MITO Undian Website program undian ini, klik tombol "Daftar Sekarang", dan isi form registrasi dengan data diri yang benar sesuai KTP.',
     tips: ['Nama harus sesuai KTP', 'NIK 16 digit', 'Nomor HP aktif yang bisa dihubungi'],
     color: 'bg-purple-500',
   },
@@ -47,8 +47,8 @@ const steps = [
     Icon: Trophy,
     no: '06',
     title: 'Ikut Undian & Menang!',
-    desc: 'Pada tanggal pengundian yang ditentukan, nama pemenang akan diundi secara acak berbobot berdasarkan jumlah token. Pemenang diumumkan di microsite ini.',
-    tips: ['Pengundian terbuka & transparan', 'Pemenang diumumkan di microsite', 'Tanggal undian ditentukan Tim Marketing'],
+    desc: 'Pada tanggal pengundian yang ditentukan, nama pemenang akan diundi secara acak berbobot berdasarkan jumlah token. Pemenang diumumkan di MITO Undian Website ini.',
+    tips: ['Pengundian terbuka & transparan', 'Pemenang diumumkan di MITO Undian Website', 'Tanggal undian ditentukan Tim Marketing'],
     color: 'bg-mito-red',
   },
 ]

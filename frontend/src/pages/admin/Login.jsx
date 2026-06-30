@@ -32,7 +32,7 @@ export default function AdminLogin() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Gift className="w-8 h-8 text-white" />
+            <img src="/logo_mito.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain"/>
           </div>
           <h1 className="text-2xl font-black text-white">MITO Admin</h1>
           <p className="text-red-200 text-sm mt-1">Panel Verifikasi Undian Jawa Timur</p>

@@ -39,7 +39,7 @@ function CountdownBox({ value, label }) {
 
 const steps = [
   { no: '01', title: 'Beli Produk MITO', desc: 'Beli produk MITO apapun di toko resmi atau marketplace selama periode program' },
-  { no: '02', title: 'Daftar di Microsite', desc: 'Isi form registrasi dengan data diri dan IMEI produk yang dibeli' },
+  { no: '02', title: 'Daftar di MITO Undian Website', desc: 'Isi form registrasi dengan data diri dan IMEI produk yang dibeli' },
   { no: '03', title: 'Upload Struk', desc: 'Unggah foto struk pembelian sebagai bukti transaksi' },
   { no: '04', title: 'Dapat Token Undian', desc: 'Setelah verifikasi admin, token langsung masuk. Rp500.000 = 1 token' },
 ]

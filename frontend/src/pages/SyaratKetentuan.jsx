@@ -63,7 +63,7 @@ const sections = [
   {
     title: '7. Pengumuman & Pengambilan Hadiah',
     content: [
-      'Daftar pemenang diumumkan di microsite program setelah tanggal pengundian.',
+      'Daftar pemenang diumumkan di MITO Undian Website program setelah tanggal pengundian.',
       'Pemenang akan dihubungi langsung oleh tim MITO melalui nomor HP yang terdaftar.',
       'Pemenang wajib menunjukkan KTP asli saat pengambilan hadiah.',
       'Hadiah tidak dapat dipindahtangankan atau ditukarkan dengan uang tunai.',

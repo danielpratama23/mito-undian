@@ -11,7 +11,7 @@ export default function Footer() {
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-9 h-9 bg-mito-red rounded-lg flex items-center justify-center">
-                <Gift className="w-5 h-5 text-white" />
+                <img src="/logo_mito.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain"/>
               </div>
               <div>
                 <div className="font-black text-xl leading-none">MITO</div>
@@ -58,7 +58,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-400">
                 <Mail className="w-4 h-4 flex-shrink-0 text-mito-red" />
-                info@mito-undian.id
+                finance@mito.co.id
               </li>
             </ul>
           </div>

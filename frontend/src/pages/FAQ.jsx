@@ -35,7 +35,7 @@ const faqs = [
       { q: 'Berapa lama proses verifikasi?', a: 'Proses verifikasi data dan struk pembelian dilakukan oleh tim MITO dalam 1–3 hari kerja setelah registrasi.' },
       { q: 'Apa yang terjadi jika data saya ditolak?', a: 'Kamu akan mendapat pemberitahuan beserta alasan penolakan. Pastikan data yang diisi sesuai KTP dan foto struk jelas terbaca.' },
       { q: 'Bagaimana cara mengetahui status registrasi?', a: 'Masukkan ID Registrasi yang diberikan saat mendaftar di halaman Cek Status untuk melihat perkembangan verifikasi.' },
-      { q: 'Bagaimana pengumuman pemenang?', a: 'Daftar pemenang akan diumumkan di halaman Pemenang pada microsite ini setelah tanggal pengundian. Pemenang juga akan dihubungi langsung oleh tim MITO.' },
+      { q: 'Bagaimana pengumuman pemenang?', a: 'Daftar pemenang akan diumumkan di halaman Pemenang pada MITO Undian Website ini setelah tanggal pengundian. Pemenang juga akan dihubungi langsung oleh tim MITO.' },
     ],
   },
 ]
