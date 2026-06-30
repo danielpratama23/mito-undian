@@ -492,12 +492,12 @@ export default function Registrasi() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-3 mt-4">
               {fields.length < 10 && (
                 <button
                   type="button"
                   onClick={() => append({ value: '' })}
-                  className="flex items-center gap-1.5 text-sm text-mito-red hover:text-mito-redDark font-medium transition-colors"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-mito-red rounded-lg font-medium transition-colors"
                 >
                   <Plus className="w-4 h-4" /> Tambah Produk Lain
                 </button>
@@ -506,7 +506,7 @@ export default function Registrasi() {
                 type="button"
                 onClick={startScan}
                 disabled={scanning || fields.length >= 10}
-                className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Camera className="w-4 h-4" /> Scan dengan Kamera
               </button>
