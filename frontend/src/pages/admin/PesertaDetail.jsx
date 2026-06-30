@@ -93,13 +93,10 @@ function LogItem({ icon: Icon, iconBg, label, tanggal, nominal, imeiList, token,
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-400 w-4">{i + 1}.</span>
                     <span className="font-mono text-xs text-gray-700 bg-white border border-gray-100 rounded px-2 py-0.5">{item.imei}</span>
+                    <span className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700">
+                      {productName || <span className="italic text-gray-400">tidak ada info produk</span>}
+                    </span>
                   </div>
-                  {item.productName && (
-                    <div className="ml-6 flex items-start gap-2">
-                      <Package className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-xs text-blue-700">{item.productName}</span>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -314,12 +311,6 @@ export default function PesertaDetail() {
                               {productName || <span className="italic text-gray-400">tidak ada info produk</span>}
                             </span>
                           </div>
-                          {productName && (
-                            <div className="ml-6 flex items-center gap-2">
-                              <Package className="w-3 h-3 text-blue-500" />
-                              <span className="text-xs text-blue-700 font-medium">{productName}</span>
-                            </div>
-                          )}
                         </div>
                       )
                     })}
