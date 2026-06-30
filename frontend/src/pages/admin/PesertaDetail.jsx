@@ -88,17 +88,24 @@ function LogItem({ icon: Icon, iconBg, label, tanggal, nominal, imeiList, token,
           <div>
             <p className="text-xs font-bold text-gray-400 mb-1.5">IMEI / Unique Code & Produk</p>
             <div className="space-y-2">
-              {iList.map((item, i) => (
-                <div key={i} className="flex flex-col gap-1 pb-2 border-b border-gray-200 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 w-4">{i + 1}.</span>
-                    <span className="font-mono text-xs text-gray-700 bg-white border border-gray-100 rounded px-2 py-0.5">{item.imei}</span>
-                    <span className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700">
-                      {productName || <span className="italic text-gray-400">tidak ada info produk</span>}
-                    </span>
+              {imeiList.map((item, i) => {
+                // Handle both old format (string) and new format (object)
+                const imei = typeof item === 'string' ? item : item.imei
+                const productName = typeof item === 'string' ? null : item.productName
+                return (
+                  <div key={i} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 font-medium">{i + 1}.</span>
+                      <span className="font-mono text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700">
+                        {imei}
+                      </span>
+                      <span className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700">
+                        {productName || <span className="italic text-gray-400">tidak ada info produk</span>}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
