@@ -142,8 +142,11 @@ export default function Registrasi() {
   const [scanning, setScanning] = useState(false)
   const [analyzingReceipt, setAnalyzingReceipt] = useState(false)
   const [receiptResult, setReceiptResult] = useState(null)
+  const [showCameraModal, setShowCameraModal] = useState(false)
   const videoRef = useRef(null)
   const codeReaderRef = useRef(null)
+  const cameraVideoRef = useRef(null)
+  const cameraStreamRef = useRef(null)
 
   const { register, control, handleSubmit, formState: { errors, isSubmitting }, setValue, watch, getValues } = useForm({
     resolver: zodResolver(schema),
@@ -216,6 +219,83 @@ export default function Registrasi() {
       reader.readAsDataURL(file)
     }
   }
+
+  // ── Camera untuk foto struk ─────────────────────────────────────────────────
+  const openCameraModal = async () => {
+    setShowCameraModal(true)
+    
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Browser tidak mendukung akses kamera')
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
+      
+      cameraStreamRef.current = stream
+      
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream
+        cameraVideoRef.current.play()
+      }
+    } catch (err) {
+      console.error('Camera error:', err)
+      toast.error('Gagal mengakses kamera. Pastikan izin kamera sudah diberikan.')
+      setShowCameraModal(false)
+    }
+  }
+
+  const closeCameraModal = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(track => track.stop())
+      cameraStreamRef.current = null
+    }
+    setShowCameraModal(false)
+  }
+
+  const capturePhoto = () => {
+    if (!cameraVideoRef.current) return
+    
+    const video = cameraVideoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        toast.error('Gagal mengambil foto')
+        return
+      }
+      
+      const file = new File([blob], 'struk.jpg', { type: 'image/jpeg' })
+      
+      // Create a DataTransfer to set the file
+      const dataTransfer = new DataTransfer()
+      dataTransfer.items.add(file)
+      
+      // Trigger file input change
+      const event = {
+        target: { files: dataTransfer.files }
+      }
+      
+      handleFileChangeWithAnalysis(event)
+      closeCameraModal()
+      toast.success('Foto struk berhasil diambil')
+    }, 'image/jpeg', 0.9)
+  }
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(track => track.stop())
+      }
+    }
+  }, [])
 
   // ── Scan IMEI dengan kamera (native browser API) ────────────────────────────
   const startScan = async () => {
@@ -538,18 +618,70 @@ export default function Registrasi() {
           {/* Upload Struk */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Foto Struk Pembelian</label>
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-6 cursor-pointer hover:border-mito-red transition-colors">
+            
+            {/* Camera Modal */}
+            {showCameraModal && (
+              <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl p-4 max-w-md w-full">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-gray-800">Foto Struk dengan Kamera</h3>
+                    <button type="button" onClick={closeCameraModal} className="text-gray-400 hover:text-gray-600">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                    <video ref={cameraVideoRef} className="w-full h-full" playsInline autoPlay />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="mt-3 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors"
+                  >
+                    <Camera className="w-5 h-5" /> Ambil Foto
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-6">
               {preview ? (
-                <img src={preview} alt="Preview struk" className="max-h-40 rounded-lg object-contain" />
+                <div className="flex flex-col items-center">
+                  <img src={preview} alt="Preview struk" className="max-h-40 rounded-lg object-contain mb-3" />
+                  <div className="flex gap-2">
+                    <label className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                      <Upload className="w-4 h-4" /> Ganti Foto
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFileChangeWithAnalysis} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={openCameraModal}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <Camera className="w-4 h-4" /> Foto Lagi
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <>
+                <div className="flex flex-col items-center">
                   <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-500">Klik untuk upload foto struk</span>
-                  <span className="text-xs text-gray-400 mt-1">JPG, PNG, WebP (max 5MB)</span>
-                </>
+                  <span className="text-sm text-gray-500 mb-3">Klik untuk upload foto struk</span>
+                  <div className="flex gap-2">
+                    <label className="flex items-center gap-1.5 px-4 py-2 bg-mito-red hover:bg-mito-redDark text-white rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                      <Upload className="w-4 h-4" /> Upload File
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFileChangeWithAnalysis} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={openCameraModal}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <Camera className="w-4 h-4" /> Buka Kamera
+                    </button>
+                  </div>
+                  <span className="text-xs text-gray-400 mt-2">JPG, PNG, WebP (max 5MB)</span>
+                </div>
               )}
-              <input type="file" accept="image/*" className="hidden" onChange={handleFileChangeWithAnalysis} />
-            </label>
+            </div>
             {errors.struk && <p className="text-red-500 text-xs mt-1">{errors.struk.message}</p>}
             
             {/* Analyzing indicator */}
