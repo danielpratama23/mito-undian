@@ -76,4 +76,14 @@ Respond ONLY in this JSON format (no markdown, no code blocks):
   }
 }
 
-module.exports = { analyzeReceipt }
+/**
+ * Calculate token count based on nominal purchase
+ * Rule: every Rp500.000 = 1 token
+ */
+function hitungToken({ nominalBeli }) {
+  const nominal = parseInt(nominalBeli || 0, 10)
+  const tokenCount = Math.floor(nominal / 500000)
+  return { tokenCount }
+}
+
+module.exports = { analyzeReceipt, hitungToken }
