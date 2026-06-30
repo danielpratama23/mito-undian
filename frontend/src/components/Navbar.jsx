@@ -33,7 +33,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-mito-red rounded-lg flex items-center justify-center">
-            <img src="/public/logo_mito_white.png" alt="Logo"/>
+            <img src="/logo_mito_white.png" alt="Logo"/>
           </div>
           <div className="leading-tight">
             <div className={`font-black text-lg leading-none ${scrolled ? 'text-mito-red' : 'text-white'}`}>
