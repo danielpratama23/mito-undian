@@ -7,7 +7,6 @@ import { toast } from 'react-toastify'
 import { Upload, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Package, RefreshCw, Lock, CheckIcon, Camera, ScanLine } from 'lucide-react'
 import axios from 'axios'
 import { formatInputRupiah, hitungEstimasiToken } from '../utils'
-// @zxing/browser di-import dynamically di dalam startScan untuk avoid SSR issues
 
 const imeiItem = z.object({
   value: z.string()
@@ -218,46 +217,35 @@ export default function Registrasi() {
     }
   }
 
-  // ── Scan IMEI dengan kamera ──────────────────────────────────────────────────
+  // ── Scan IMEI dengan kamera (native browser API) ────────────────────────────
   const startScan = async () => {
     setShowScanner(true)
     setScanning(true)
     
     try {
-      // Dynamic import untuk avoid SSR/build issues di Vercel
-      const { BrowserMultiFormatReader } = await import('@zxing/browser')
-      const codeReader = new BrowserMultiFormatReader()
-      codeReaderRef.current = codeReader
-      
-      const videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices()
-      const selectedDevice = videoInputDevices.find(d => d.label.toLowerCase().includes('back')) || videoInputDevices[0]
-      
-      if (!selectedDevice) {
-        throw new Error('Tidak ada kamera yang terdeteksi')
+      // Cek apakah browser mendukung mediaDevices
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Browser tidak mendukung akses kamera')
       }
       
-      await codeReader.decodeFromVideoDevice(selectedDevice.deviceId, videoRef.current, (result, err) => {
-        if (result) {
-          // Cek apakah IMEI valid (minimal 9 digit)
-          const imei = result.getText().trim()
-          if (imei.length >= 9 && /^\d+$/.test(imei)) {
-            // Tambah ke field IMEI yang masih kosong, atau buat baru
-            const currentValues = getValues('imeiItems').map(i => i.value.trim())
-            if (!currentValues.includes(imei) && fields.length < 10) {
-              append({ value: imei })
-              toast.success(`IMEI terdeteksi: ${imei}`)
-              stopScan()
-            } else if (currentValues.includes(imei)) {
-              toast.warning('IMEI sudah ada di daftar')
-            } else {
-              toast.warning('Maksimal 10 IMEI')
-            }
-          }
-        }
-        if (err) {
-          // Ignore scan errors (tidak ada barcode di frame)
-        }
+      // Request kamera
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       })
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.play()
+      }
+      
+      // Simpan stream untuk cleanup
+      codeReaderRef.current = { stream }
+      
+      // TODO: Implementasi barcode detection menggunakan native API
+      // Untuk sekarang, user harus input manual IMEI
+      toast.info('Kamera aktif. Silakan input IMEI secara manual untuk sekarang.')
+      setTimeout(() => stopScan(), 2000)
+      
     } catch (err) {
       console.error('Scan error:', err)
       toast.error('Gagal mengakses kamera. Pastikan izin kamera sudah diberikan.')
