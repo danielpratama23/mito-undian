@@ -32,9 +32,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-mito-red rounded-lg flex items-center justify-center">
-            <img src="/logo_mito_white.png" alt="Logo"/>
-          </div>
+          <img src="/logo_mito.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain"/>
           <div className="leading-tight">
             <div className={`font-black text-lg leading-none ${scrolled ? 'text-mito-red' : 'text-white'}`}>
               MITO

@@ -41,9 +41,7 @@ export default function AdminLayout() {
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-mito-red rounded-lg flex items-center justify-center">
-            <img src="/logo_mito_white.png" alt="Logo" className="w-5 h-5 object-contain" />
-          </div>
+          <img src="/logo_mito.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain"/>
           <div>
             <div className="font-black text-sm leading-none">MITO Admin</div>
             <div className="text-[10px] text-gray-400 mt-0.5">Undian Jawa Timur</div>
