@@ -37,6 +37,7 @@ const upload = multer({
 })
 
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
+app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
 
 // ── Public ────────────────────────────────────────────────────────────────────
 app.get('/api/program', (req, res) => res.json({
@@ -122,8 +123,11 @@ app.put('/api/admin/pemenang/:id/umumkan',            requireSuperAdmin, toggleU
 app.use((req, res) => res.status(404).json({ success: false, message: `Route tidak ditemukan: ${req.method} ${req.path}` }))
 app.use(errorHandler)
 
-app.listen(PORT, '0.0.0.0' , () => {
-  console.log(`\n✅ MITO Undian API → http://localhost:${PORT}  [${process.env.NODE_ENV || 'dev'}]\n`)
-})
+// Only listen when running directly (not on Vercel serverless)
+if (!process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0' , () => {
+    console.log(`\n✅ MITO Undian API → http://localhost:${PORT}  [${process.env.NODE_ENV || 'dev'}]\n`)
+  })
+}
 
 module.exports = app
