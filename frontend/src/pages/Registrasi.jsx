@@ -492,23 +492,23 @@ export default function Registrasi() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-2 mt-3">
               {fields.length < 10 && (
                 <button
                   type="button"
                   onClick={() => append({ value: '' })}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-mito-red rounded-lg font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-mito-red rounded-lg text-sm font-medium transition-colors"
                 >
-                  <Plus className="w-4 h-4" /> Tambah Produk Lain
+                  <Plus className="w-3.5 h-3.5" /> Tambah
                 </button>
               )}
               <button
                 type="button"
                 onClick={startScan}
                 disabled={scanning || fields.length >= 10}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Camera className="w-4 h-4" /> Scan dengan Kamera
+                <Camera className="w-3.5 h-3.5" /> Scan
               </button>
             </div>
             {errors.imeiItems && !Array.isArray(errors.imeiItems) && (
